@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32112.339
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HpglHelper", "HpglHelper\HpglHelper.csproj", "{26F44B12-BBF8-4943-A13F-C7F04FDF07B0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HpglViewer", "HpglViewer\HpglViewer.csproj", "{AAE77B0A-95AA-4BBF-A4A1-D5192C3850CF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{26F44B12-BBF8-4943-A13F-C7F04FDF07B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{26F44B12-BBF8-4943-A13F-C7F04FDF07B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{26F44B12-BBF8-4943-A13F-C7F04FDF07B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{26F44B12-BBF8-4943-A13F-C7F04FDF07B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AAE77B0A-95AA-4BBF-A4A1-D5192C3850CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AAE77B0A-95AA-4BBF-A4A1-D5192C3850CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AAE77B0A-95AA-4BBF-A4A1-D5192C3850CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AAE77B0A-95AA-4BBF-A4A1-D5192C3850CF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {662C44E9-24CC-4231-A390-0F19F4161252}
+	EndGlobalSection
+EndGlobal
