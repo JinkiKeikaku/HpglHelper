@@ -10,10 +10,17 @@
         /// </summary>
         public HpglPoint Center { get; set; } = new();
         /// <summary>
-        /// 円弧の開始点。半径はこの点と中心点の距離から求められる。
-        /// 同様に、円弧の開始角度もこの点と中心点の関係から求められる。
+        /// 半径
         /// </summary>
-        public HpglPoint StartPoint { get; set; } = new();
+        public double Radius { get; set; }
+        /// <summary>
+        /// 扁平率
+        /// </summary>
+        public double Flatness { get; set; } = 1.0;
+        /// <summary>
+        /// 開始角
+        /// </summary>
+        public double StartAngleDeg { get; set; }
         /// <summary>
         /// 円弧角
         /// </summary>
@@ -27,29 +34,20 @@
         /// 分解能。ChordToleranceModeの値により角度もしくは偏倚距離。
         /// </summary>
         public double Tolerance { get; set; } = 5;
+
         /// <summary>
-        /// 半径
+        /// 円弧の始点
         /// </summary>
-        public double Radius
+        public HpglPoint StartPoint
         {
             get
             {
-                double dx = StartPoint.X - Center.X;
-                double dy = StartPoint.Y - Center.Y;
-                return Math.Sqrt(dx * dx + dy * dy);
+                var a = Math.PI * StartAngleDeg / 180;
+                return new HpglPoint(
+                    Math.Cos(a) * Radius + Center.X, Flatness * Math.Sin(a) * Radius + Center.Y);
             }
         }
-        /// <summary>
-        /// 開始角
-        /// </summary>
-        public double StartAngleDeg
-        {
-            get
-            {
-                var a = Math.Atan2(StartPoint.Y - Center.Y, StartPoint.X - Center.X);
-                return a * 180 / Math.PI;
-            }
-        }
+
         /// <summary>
         /// 円弧の終点
         /// </summary>
@@ -59,7 +57,7 @@
             {
                 var a = Math.PI * (StartAngleDeg + SweepAngleDeg) / 180;
                 return new HpglPoint(
-                    Math.Cos(a) * Radius + Center.X, Math.Sin(a) * Radius + Center.Y);
+                    Math.Cos(a) * Radius + Center.X, Flatness * Math.Sin(a) * Radius + Center.Y);
             }
         }
     }

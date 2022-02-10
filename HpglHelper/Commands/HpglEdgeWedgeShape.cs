@@ -16,6 +16,11 @@
         public double Radius { get; set; }
 
         /// <summary>
+        /// 扁平率
+        /// </summary>
+        public double Flatness { get; set; } = 1.0;
+
+        /// <summary>
         /// 開始角。
         /// </summary>
         public double StartAngleDeg { get; set; }

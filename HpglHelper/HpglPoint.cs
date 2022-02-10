@@ -30,6 +30,13 @@ namespace HpglHelper
             X += dx;
             Y += dy;
         }
+        public void Offset(HpglPoint dp)
+        {
+            Offset(dp.X, dp.Y);
+        }
+
+        public double HYpot() => Math.Sqrt(X * X + Y * Y);
+
         public override string ToString() => $"{X} {Y}";
 
 

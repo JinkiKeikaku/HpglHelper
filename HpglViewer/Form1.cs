@@ -51,7 +51,7 @@ namespace HpglViewer
             var writer = new HpglWriter();
 
             using var w = new StreamWriter(path);
-            writer.Write(w, mMillimeterPerUnit);
+//            writer.Write(w, mMillimeterPerUnit);
             //スクロールバーなんかの設定。
             CalcSize();
             //panel1を無効化してpanel1のpaintが呼ばれる。

@@ -15,13 +15,13 @@ namespace HpglViewer
     internal class HpglDrawer
     {
         List<HpglCommand> mShapes;
-        CadPoint mP1 = new();
-        CadPoint mP2 = new();
-        double mXMin;
-        double mXMax;
-        double mYMin;
-        double mYMax;
-        double mMillimeterPerUnit;
+        //CadPoint mP1 = new();
+        //CadPoint mP2 = new();
+        //double mXMin;
+        //double mXMax;
+        //double mYMin;
+        //double mYMax;
+        //double mMillimeterPerUnit;
         CadPoint mOrigin = new(0, 0);
 
         Color[] mPenColors = new Color[] {
@@ -36,7 +36,7 @@ namespace HpglViewer
             mOrigin.Y = height;
 
             mShapes = shapes;
-            mMillimeterPerUnit = millimeterPerUnit;
+            //mMillimeterPerUnit = millimeterPerUnit;
         }
 
         public void OnDraw(Graphics g, DrawContext d)
@@ -50,8 +50,8 @@ namespace HpglViewer
         {
             switch (shape)
             {
-                case HpglIPCommand s: OnSetIP(s); break;
-                case HpglSCCommand s: OnSetSC(s); break;
+                //case HpglIPCommand s: OnSetIP(s); break;
+                //case HpglSCCommand s: OnSetSC(s); break;
                 case HpglLineShape s: OnDrawLine(g, d, s); break;
                 case HpglCircleSahpe s: OnDrawCircle(g, d, s); break;
                 case HpglArcShape s: OnDrawArc(g, d, s); break;
@@ -64,47 +64,21 @@ namespace HpglViewer
             }
         }
 
-        void OnSetIP(HpglIPCommand s)
-        {
-            mP1.X = s.P1X;
-            mP1.Y = s.P1Y;
-            mP2.X = s.P2X;
-            mP2.Y = s.P2Y;
-        }
-        void OnSetSC(HpglSCCommand s)
-        {
-            mXMin = s.XMin;
-            mYMin = s.YMin;
-            mXMax = s.XMax;
-            mYMax = s.YMax;
-        }
+        //void OnSetIP(HpglIPCommand s)
+        //{
+        //    mP1.X = s.P1X;
+        //    mP1.Y = s.P1Y;
+        //    mP2.X = s.P2X;
+        //    mP2.Y = s.P2Y;
+        //}
+        //void OnSetSC(HpglSCCommand s)
+        //{
+        //    mXMin = s.XMin;
+        //    mYMin = s.YMin;
+        //    mXMax = s.XMax;
+        //    mYMax = s.YMax;
+        //}
 
-        /// <summary>
-        /// 塗りつぶしのハッチング間隔
-        /// HpglhelperではHpglFillType.FillGapが-1の場合をデフォルトとしたため変換している。
-        /// 本来デフォルトは、Ｐ１－Ｐ２間の距離の1%であるが、単位系を合わせるために座標変換している。
-        /// また、FillGapがが0の場合はペン幅となるため変換する。これも現在の座標系と合わせるために変換する。
-        /// ただし、本当にこれでいいかは自信がない。
-        /// </summary>
-        /// <param name="t"></param>
-        /// <returns></returns>
-        double GetFillGap(HpglFillShape s)
-        {
-            if (s.FillType.FillGap == 0)
-            {
-                var a = s.PenThickness / mMillimeterPerUnit;
-                var dx = (mXMax - mXMin) / (mP2.X - mP1.X);
-                var dy = (mYMax - mYMin) / (mP2.Y - mP1.Y);
-                return Math.Sqrt(dx * dx + dy * dy) * a;
-            }
-            if (s.FillType.FillGap == -1)
-            {
-                var dx = mXMax - mXMin;
-                var dy = mYMax - mYMin;
-                return Math.Sqrt(dx * dx + dy * dy) / 100;
-            }
-            return s.FillType.FillGap;
-        }
 
         void OnDrawLine(Graphics g, DrawContext d, HpglLineShape shape)
         {
@@ -170,8 +144,8 @@ namespace HpglViewer
             var saved = g.Save();
             g.TranslateTransform(p0.X, p0.Y);
             g.RotateTransform(angle);
-            var h = shape.FontHeight * 10.0f;
-            var w = shape.FontWidth * 10.0f;
+            var h = shape.FontHeight;
+            var w = shape.FontWidth;
             //手抜きでフォント幅は省略
             using var font = new Font("Arial", (float)h, GraphicsUnit.Pixel);
             var i = shape.Origin;
@@ -275,15 +249,13 @@ namespace HpglViewer
             return d.DocToCanvas(ConvertPoint(p));
         }
 
-        /// <summary>
-        /// 座標変換。SC,IPの値から返還。単位はmm。
-        /// </summary>
         CadPoint ConvertPoint(HpglPoint p)
         {
-            var p0 = (mP1 - new CadPoint(-mXMin, -mYMin)) * mMillimeterPerUnit;
-            var sx = (mP2.X - mP1.X) / (mXMax - mXMin) * mMillimeterPerUnit;
-            var sy = (mP2.Y - mP1.Y) / (mYMax - mYMin) * mMillimeterPerUnit;
-            return new CadPoint(sx * p.X + p0.X, sy * p.Y + p0.Y) + mOrigin;
+            //var p0 = (mP1 - new CadPoint(-mXMin, -mYMin)) * mMillimeterPerUnit;
+            //var sx = (mP2.X - mP1.X) / (mXMax - mXMin) * mMillimeterPerUnit;
+            //var sy = (mP2.Y - mP1.Y) / (mYMax - mYMin) * mMillimeterPerUnit;
+            //return new CadPoint(sx * p.X + p0.X, sy * p.Y + p0.Y) + mOrigin;
+            return new CadPoint(p.X + mOrigin.X, p.Y + mOrigin.Y);
         }
 
         Color ConvertPenColor(int pen)

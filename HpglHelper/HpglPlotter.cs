@@ -16,8 +16,8 @@ namespace HpglHelper
         public int XMax;
         public int YMin;
         public int YMax;
-        const double DefaultFontHeight = 0.375;
-        const double DefaultFontWidth = 0.285;
+        const double DefaultFontHeight = 3.75;
+        const double DefaultFontWidth = 2.85;
         double mPaperWidth;
         double mPaperHeight;
 
@@ -88,14 +88,14 @@ namespace HpglHelper
             InitFontSize();
             ChordToleranceMode = 0;
             mFillPenThicknessMap.Clear();
-            FillType = new();   
+            FillType = new();
         }
 
         public void SetIP()
         {
             var w = mPaperWidth / mMillimeterPerUnit;
             var h = mPaperHeight / mMillimeterPerUnit;
-            SetIP(0,0,(int)w, (int)h);
+            SetIP(0, 0, (int)w, (int)h);
         }
         public void SetIP(int p1x, int p1y)
         {
@@ -103,23 +103,15 @@ namespace HpglHelper
             var dy = p1y - P1Y;
             var p2x = P2X + dx;
             var p2y = P2Y + dy;
-            SetIP(p1x,p1y, p2x,p2y);
+            SetIP(p1x, p1y, p2x, p2y);
         }
 
         public void SetIP(int p1x, int p1y, int p2x, int p2y)
         {
-            var s = new HpglIPCommand()
-            {
-                P1X = p1x,
-                P1Y = p1y,
-                P2X = p2x,
-                P2Y = p2y,
-            };
             P1X = p1x;
             P1Y = p1y;
             P2X = p2x;
             P2Y = p2y;
-            AddCommand(s);
         }
 
         public void SetSC()
@@ -129,18 +121,10 @@ namespace HpglHelper
 
         public void SetSC(int xMin, int xMax, int yMin, int yMax)
         {
-            var s = new HpglSCCommand()
-            {
-                XMin = xMin,
-                XMax = xMax,
-                YMin = yMin,
-                YMax = yMax
-            };
             XMin = xMin;
             XMax = xMax;
             YMin = yMin;
             YMax = yMax;
-            AddCommand(s);
         }
 
         public void PenUp() => isPenDown = false;
@@ -160,33 +144,35 @@ namespace HpglHelper
 
         public void MoveRelative(double x, double y)
         {
+
             if (isPenDown)
             {
                 var line = new HpglLineShape();
                 line.P0.Set(mCurrent);
-                mCurrent.Offset(x, y);
+                mCurrent= ConvertRelativePoint(x, y);
                 line.P1.Set(mCurrent);
                 AddCommand(line);
             }
             else
             {
-                mCurrent.Offset(x, y);
+                mCurrent = ConvertRelativePoint(x, y);
             }
             isRelative = true;
         }
         public void MoveAbsolute(double x, double y)
         {
+            var p = ConvertPoint(x, y);
             if (isPenDown)
             {
                 var line = new HpglLineShape();
                 line.P0.Set(mCurrent);
-                mCurrent.Set(x, y);
+                mCurrent.Set(p);
                 line.P1.Set(mCurrent);
                 AddCommand(line);
             }
             else
             {
-                mCurrent.Set(x, y);
+                mCurrent.Set(p);
             }
             isRelative = false;
         }
@@ -195,7 +181,8 @@ namespace HpglHelper
         {
             var s = new HpglCircleSahpe();
             s.Center.Set(mCurrent);
-            s.Radius = radius;
+            s.Radius = ConvertLength(radius);
+            s.Flatness = GetFlatness();
             s.ChordToleranceMode = ChordToleranceMode;
             s.Tolerance = tolerance;
             AddCommand(s);
@@ -203,11 +190,16 @@ namespace HpglHelper
 
         public void Arc(double cx, double cy, double sweepDeg, bool isRelative, double tolerance)
         {
-            var p0 = isRelative ? new HpglPoint(mCurrent.X + cx, mCurrent.Y + cy) : new HpglPoint(cx, cy);
+            var p0 = isRelative? ConvertRelativePoint(cx, cy):ConvertPoint(cx, cy);
             var s = new HpglArcShape();
+            var dp = mCurrent - p0;
+            dp.Y /= GetFlatness();
             s.Center.Set(p0);
+            s.Radius = dp.HYpot();
+            s.Flatness = GetFlatness();
+            s.StartAngleDeg = 180 * Math.Atan2(dp.Y, dp.X) / Math.PI;
             s.SweepAngleDeg = sweepDeg;
-            s.StartPoint.Set(mCurrent);
+//            s.StartPoint.Set(mCurrent);
             if (isPenDown)
             {
                 AddCommand(s);
@@ -221,7 +213,8 @@ namespace HpglHelper
         {
             var s = new HpglEdgeWedgeShape();
             s.Center.Set(mCurrent);
-            s.Radius=radius;
+            s.Radius = ConvertLength(radius);
+            s.Flatness = GetFlatness();
             s.StartAngleDeg = startDeg;
             s.SweepAngleDeg = sweepDeg;
             s.ChordToleranceMode = ChordToleranceMode;
@@ -231,7 +224,7 @@ namespace HpglHelper
 
         public void EdgeRectangle(double x, double y, bool isRelative)
         {
-            var p1 = isRelative ? new HpglPoint(mCurrent.X + x, mCurrent.Y + y) : new HpglPoint(x, y);
+            var p1 = isRelative ? ConvertRelativePoint(x, y) : ConvertPoint(x, y);
             var s = new HpglEdgeRectangleShape();
             s.P0.Set(mCurrent);
             s.P1.Set(p1);
@@ -240,11 +233,11 @@ namespace HpglHelper
 
         public void FillRectangle(double x, double y, bool isRelative)
         {
-            var p1 = isRelative ? new HpglPoint(mCurrent.X + x, mCurrent.Y + y) : new HpglPoint(x, y);
+            var p1 = isRelative ? ConvertRelativePoint(x, y) : ConvertPoint(x, y);
             var s = new HpglFillRectangleShape();
             s.P0.Set(mCurrent);
             s.P1.Set(p1);
-            s.FillType = FillType;
+//            s.FillType = FillType;
             s.PenThickness = GetPenThickness();
             AddCommand(s);
         }
@@ -253,13 +246,13 @@ namespace HpglHelper
         {
             var s = new HpglFillWedgeShape();
             s.Center.Set(mCurrent);
-            s.Radius = radius;
+            s.Radius = ConvertLength(radius);
+            s.Flatness = GetFlatness();
             s.StartAngleDeg = startDeg;
             s.SweepAngleDeg = sweepDeg;
             s.ChordToleranceMode = ChordToleranceMode;
             s.Tolerance = tolerance;
-            s.FillType= FillType;
-            s.PenThickness=GetPenThickness();
+            s.PenThickness = GetPenThickness();
             AddCommand(s);
         }
 
@@ -280,16 +273,81 @@ namespace HpglHelper
         /// </summary>
         public void CharacterMove(double cx, double cy)
         {
-            var sx = (P2X - P1X) / (XMax - XMin) * mMillimeterPerUnit;
-            var sy = (P2Y - P1Y) / (YMax - YMin) * mMillimeterPerUnit;
-
-            mCurrent.Offset(10 * cx * FontWidth * sx, 10 * cy * FontHeight * sy);
+            //var sx = (P2X - P1X) / (XMax - XMin) * mMillimeterPerUnit;
+            //var sy = (P2Y - P1Y) / (YMax - YMin) * mMillimeterPerUnit;
+            mCurrent.Offset(cx * FontWidth, cy * FontHeight);
         }
 
         void AddCommand(HpglCommand cmd)
         {
-            if(cmd is HpglShape s)  s.PenNumber = SelectedPen;
+            if (cmd is HpglShape s) { 
+                s.PenNumber = SelectedPen; 
+            }
+            if(cmd is HpglFillShape fs)
+            {
+                fs.FillType.FillType = FillType.FillType;
+                fs.FillType.FillAngle=FillType.FillAngle;
+                switch (FillType.FillGap)
+                {
+                    case -1:
+                        var dx = P2X - P1X;
+                        var dy = P2Y - P1Y;
+                        fs.FillType.FillGap  = Math.Sqrt(dx * dx + dy * dy) / 100 * mMillimeterPerUnit;
+                        break;
+                    case 0:
+                        fs.FillType.FillGap = GetPenThickness();
+                        break;
+                    default:
+                        fs.FillType.FillGap = FillType.FillGap * mMillimeterPerUnit;
+                        break;
+                }
+
+
+
+            }
             Shapes.Add(cmd);
         }
+
+        /// <summary>
+        /// 座標変換。SC,IPの値からプロッタ座標(mm)に変換。
+        /// </summary>
+        HpglPoint ConvertPoint(HpglPoint p)=>ConvertPoint(p.X, p.Y);
+
+        /// <summary>
+        /// 座標変換。SC,IPの値からプロッタ座標(mm)に変換。
+        /// </summary>
+        HpglPoint ConvertPoint(double x, double y)
+        {
+            var sx = (double)(P2X - P1X) / (XMax - XMin);
+            var sy = (double)(P2Y - P1Y) / (YMax - YMin);
+            return new HpglPoint(
+                (sx * (x - XMin) + P1X) * mMillimeterPerUnit,
+                (sy * (y - YMin) + P1Y) * mMillimeterPerUnit);
+        }
+
+        /// <summary>
+        /// 座標変換。SC,IPの値からプロッタ座標(mm)に変換。
+        /// </summary>
+        HpglPoint ConvertRelativePoint(double x, double y)
+        {
+            var sx = (double)(P2X - P1X) / (XMax - XMin);
+            var sy = (double)(P2Y - P1Y) / (YMax - YMin);
+            return new HpglPoint(sx * x * mMillimeterPerUnit +　mCurrent.X, sy * y * mMillimeterPerUnit + mCurrent.Y);
+        }
+
+        double ConvertLength(double a)
+        {
+            return a * (P2X - P1X) / (XMax - XMin) * mMillimeterPerUnit;
+        }
+
+        double GetFlatness()
+        {
+            //var sx = (double)(P2X - P1X) / (XMax - XMin);
+            //var sy = (double)(P2Y - P1Y) / (YMax - YMin);
+            //return sy / sx;
+            var sx = (double)(P2X - P1X) / (XMax - XMin);
+            return (double)(P2Y - P1Y) * (XMax - XMin) / ((YMax - YMin)* (P2X - P1X));
+        }
+
     }
 }

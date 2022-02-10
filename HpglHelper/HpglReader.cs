@@ -274,8 +274,8 @@ namespace HpglHelper
             else
             {
                 if (a.Count < 2) return;
-                mPlotter.FontWidth = a[0];
-                mPlotter.FontHeight = a[1];
+                mPlotter.FontWidth = a[0]*10;
+                mPlotter.FontHeight = a[1]*10;
             }
         }
         void AbsoluteDirection()
