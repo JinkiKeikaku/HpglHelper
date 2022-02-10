@@ -1,4 +1,4 @@
-﻿namespace HpglHelper
+﻿namespace HpglHelper.Commands
 {
     public class HpglLabelShape : HpglShape
     {

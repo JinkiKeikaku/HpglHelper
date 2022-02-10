@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using HpglHelper.Commands;
+using System.Text;
 
 namespace HpglHelper
 {
@@ -16,7 +17,7 @@ namespace HpglHelper
         List<string> mParams = new();
         HpglPlotter mPlotter = new();
         int mLabelTerminator = 3;
-        public List<HpglShape> Shapes=>mPlotter.Shapes;
+        public List<HpglCommand> Shapes => mPlotter.Shapes;
 
 
         /// <summary>
@@ -104,7 +105,7 @@ namespace HpglHelper
                 { "DF",()=>{ } },
                 { "IP",()=>{ InputP1AndP2(); } },
                 { "SC",()=>{ Scale(); } },
-                { "SP",()=>{ } },
+                { "SP",()=>{ SelectPen(); } },
                 { "PU",()=>{ mPlotter.PenUp();   PlotPenMove(); } },
                 { "PD",()=>{ mPlotter.PenDown();   PlotPenMove(); } },
                 { "PA",()=>{PlotAbsolute(); }},
@@ -121,6 +122,13 @@ namespace HpglHelper
                 { "DR",()=>{ RelativeDirection(); } },
                 { "LO",()=>{ LabelOrigin(); } },
                 { "CP",()=>{ CharacterMove(); } },
+                { "EW",()=>{ EdgeWedge(); } },
+                { "EA",()=>{ PlotRectangle(false); } },
+                { "ER",()=>{ PlotRectangle(true); } },
+                { "FT",()=>{ SetFillType(); } },
+                { "WG",()=>{ FillWedge(); } },
+                { "RA",()=>{ FillRectangle(false); } },
+                { "RR",()=>{ FillRectangle(true); } },
             };
 
             if (cmdActions.TryGetValue(mCommand, out var action))
@@ -150,25 +158,51 @@ namespace HpglHelper
             return a;
         }
 
+        void SelectPen()
+        {
+            var a = GetValues();
+            if (a.Count == 0)
+            {
+                mPlotter.SetPen(0);
+            }
+            else
+            {
+                mPlotter.SetPen((int)a[0]);
+            }
+        }
+
+        void SetFillType()
+        {
+            var f = new HpglFillType();
+            var a = GetValues();
+
+            if (a.Count > 0) f.FillType = (int)a[0];
+            if (a.Count > 1) f.FillGap = a[1];
+            if (a.Count > 2) f.FillAngle = a[2];
+            mPlotter.FillType = f;
+        }
+
+
+
         void InputP1AndP2()
         {
             var a = GetPoints();
             if (a.Count == 0) mPlotter.SetIP();
-            else if (a.Count == 1) mPlotter.SetIP(a[0]);
-            else if (a.Count == 2) mPlotter.SetIP(a[0], a[1]);
+            else if (a.Count == 1) mPlotter.SetIP((int)a[0].X, (int)a[0].Y);
+            else if (a.Count == 2) mPlotter.SetIP((int)a[0].X, (int)a[0].Y, (int)a[1].X, (int)a[1].Y);
         }
 
         void Scale()
         {
             var a = GetValues();
             if (a.Count == 0) mPlotter.SetSC();
-            else if(a.Count == 4) mPlotter.SetSC(a[0], a[1], a[2], a[3]);
+            else if (a.Count == 4) mPlotter.SetSC((int)a[0], (int)a[1], (int)a[2], (int)a[3]);
         }
 
         void SetChordToleranceMode()
         {
             var a = GetValues();
-            mPlotter.ChordToleranceMode = a.Count == 0 ? 0:(int)a[0];
+            mPlotter.ChordToleranceMode = a.Count == 0 ? 0 : (int)a[0];
         }
 
         void PlotPenMove()
@@ -207,6 +241,12 @@ namespace HpglHelper
             if (a.Count < 3) return;
             var tolerance = a.Count == 4 ? a[3] : 5;
             mPlotter.Arc(a[0], a[1], a[2], isRelative, tolerance);
+        }
+        void PlotRectangle(bool isRelative)
+        {
+            var a = GetValues();
+            if (a.Count == 0) return;
+            mPlotter.EdgeRectangle(a[0], a[1], isRelative);
         }
         void Label()
         {
@@ -262,8 +302,9 @@ namespace HpglHelper
             {
                 if (a.Count < 2) return;
 
-                var dp = mPlotter.P2 - mPlotter.P1;
-                mPlotter.TextAngle = 180 * Math.Atan2(a[1] * dp.X, a[0]*dp.Y) / Math.PI;
+                var dpx = mPlotter.P2X - mPlotter.P1X;
+                var dpy = mPlotter.P2Y - mPlotter.P1Y;
+                mPlotter.TextAngle = 180 * Math.Atan2(a[1] * dpx, a[0] * dpy) / Math.PI;
             }
         }
         void LabelOrigin()
@@ -296,6 +337,26 @@ namespace HpglHelper
                 dy = a[1];
             }
             mPlotter.CharacterMove(dx, dy);
+        }
+        void EdgeWedge()
+        {
+            var a = GetValues();
+            if (a.Count < 3) return;
+            var tolerance = a.Count == 4 ? a[3] : 5;
+            mPlotter.EdgeWedge(a[0], a[1], a[2], tolerance);
+        }
+        void FillWedge()
+        {
+            var a = GetValues();
+            if (a.Count < 3) return;
+            var tolerance = a.Count == 4 ? a[3] : 5;
+            mPlotter.FillWedge(a[0], a[1], a[2], tolerance);
+        }
+        void FillRectangle(bool isRelative)
+        {
+            var a = GetValues();
+            if (a.Count == 0) return;
+            mPlotter.FillRectangle(a[0], a[1], isRelative);
         }
     }
 }

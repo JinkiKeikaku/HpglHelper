@@ -1,4 +1,6 @@
 ﻿
+using HpglHelper.Commands;
+
 namespace HpglHelper
 {
     class HpglPlotter
@@ -6,12 +8,14 @@ namespace HpglHelper
         bool isPenDown = false;
         bool isRelative = false;
         HpglPoint mCurrent = new HpglPoint();
-        public HpglPoint P1 { get; private set; } = new HpglPoint();
-        public HpglPoint P2 { get; private set; } = new HpglPoint();
-        public double XMin;
-        public double XMax;
-        public double YMin;
-        public double YMax;
+        public int P1X;
+        public int P1Y;
+        public int P2X;
+        public int P2Y;
+        public int XMin;
+        public int XMax;
+        public int YMin;
+        public int YMax;
         const double DefaultFontHeight = 0.375;
         const double DefaultFontWidth = 0.285;
         double mPaperWidth;
@@ -21,7 +25,7 @@ namespace HpglHelper
 
         public HpglPlotter() { }
         double mMillimeterPerUnit = 0.025;//0.025mm
-        public int SelectedPen { get; set; } = 0;
+        public int SelectedPen { get; private set; } = 0;
         public double FontHeight { get; set; } = DefaultFontHeight;
         public double FontWidth { get; set; } = DefaultFontWidth;
         public string FontName { get; set; } = DefaultFontName;
@@ -30,10 +34,34 @@ namespace HpglHelper
         /// 1:左下、２:左中、3:左上、4:中下、5:中中、6:中上、7:右下、8:右中、9:右上
         /// </summary>
         public int LabelOrigin { get; set; } = 1;
-
-        public List<HpglShape> Shapes { get; set; } = new();
+        public List<HpglCommand> Shapes { get; set; } = new();
         public int ChordToleranceMode { get; set; } = 0;
 
+        /// <summary>
+        /// 塗りつぶしタイプ
+        /// </summary>
+        public HpglFillType FillType { get; set; } = new();
+        /// <summary>
+        /// ペン番号に対応する塗りつぶしのペン幅（単位はmm）。デフォルトは0.3mm
+        /// </summary>
+        Dictionary<int, double> mFillPenThicknessMap { get; } = new();
+        /// <summary>
+        /// 現在のペン幅。単位はｍｍ。
+        /// </summary>
+        /// <returns></returns>
+        public double GetPenThickness()
+        {
+            return mFillPenThicknessMap.GetValueOrDefault(SelectedPen, 0.3);
+        }
+        public void SetPenThickness(double w)
+        {
+            mFillPenThicknessMap[SelectedPen] = w;
+        }
+
+        public void SetPen(int pen)
+        {
+            SelectedPen = pen;
+        }
 
         public void InitPlotter(double paperWidth, double paperHeight, double millimeterPerUnit)
         {
@@ -59,41 +87,49 @@ namespace HpglHelper
             isRelative = false;
             InitFontSize();
             ChordToleranceMode = 0;
+            mFillPenThicknessMap.Clear();
+            FillType = new();   
         }
 
         public void SetIP()
         {
             var w = mPaperWidth / mMillimeterPerUnit;
             var h = mPaperHeight / mMillimeterPerUnit;
-            SetIP(new HpglPoint(0, 0), new HpglPoint(w, h));
+            SetIP(0,0,(int)w, (int)h);
         }
-        public void SetIP(HpglPoint p1)
+        public void SetIP(int p1x, int p1y)
         {
-            var dp = p1 - P1;
-            var p2 = P2 + dp;
-            SetIP(p1, p2);
+            var dx = p1x - P1X;
+            var dy = p1y - P1Y;
+            var p2x = P2X + dx;
+            var p2y = P2Y + dy;
+            SetIP(p1x,p1y, p2x,p2y);
         }
 
-        public void SetIP(HpglPoint p1, HpglPoint p2)
+        public void SetIP(int p1x, int p1y, int p2x, int p2y)
         {
-            var s = new HpglIPShape()
+            var s = new HpglIPCommand()
             {
-                P1 = p1,
-                P2 = p2,
+                P1X = p1x,
+                P1Y = p1y,
+                P2X = p2x,
+                P2Y = p2y,
             };
-            P1.Set(p1);
-            P2.Set(p2);
-            AddShape(s);
+            P1X = p1x;
+            P1Y = p1y;
+            P2X = p2x;
+            P2Y = p2y;
+            AddCommand(s);
         }
 
         public void SetSC()
         {
-            SetSC(P1.X, P2.X, P1.Y, P2.Y);
+            SetSC(P1X, P2X, P1Y, P2Y);
         }
 
-        public void SetSC(double xMin, double xMax, double yMin, double yMax)
+        public void SetSC(int xMin, int xMax, int yMin, int yMax)
         {
-            var s = new HpglSCShape()
+            var s = new HpglSCCommand()
             {
                 XMin = xMin,
                 XMax = xMax,
@@ -104,7 +140,7 @@ namespace HpglHelper
             XMax = xMax;
             YMin = yMin;
             YMax = yMax;
-            AddShape(s);
+            AddCommand(s);
         }
 
         public void PenUp() => isPenDown = false;
@@ -130,7 +166,7 @@ namespace HpglHelper
                 line.P0.Set(mCurrent);
                 mCurrent.Offset(x, y);
                 line.P1.Set(mCurrent);
-                AddShape(line);
+                AddCommand(line);
             }
             else
             {
@@ -146,7 +182,7 @@ namespace HpglHelper
                 line.P0.Set(mCurrent);
                 mCurrent.Set(x, y);
                 line.P1.Set(mCurrent);
-                AddShape(line);
+                AddCommand(line);
             }
             else
             {
@@ -154,15 +190,17 @@ namespace HpglHelper
             }
             isRelative = false;
         }
+
         public void Circle(double radius, double tolerance)
         {
-            var s = new HpglCircleShape();
+            var s = new HpglCircleSahpe();
             s.Center.Set(mCurrent);
             s.Radius = radius;
             s.ChordToleranceMode = ChordToleranceMode;
             s.Tolerance = tolerance;
-            AddShape(s);
+            AddCommand(s);
         }
+
         public void Arc(double cx, double cy, double sweepDeg, bool isRelative, double tolerance)
         {
             var p0 = isRelative ? new HpglPoint(mCurrent.X + cx, mCurrent.Y + cy) : new HpglPoint(cx, cy);
@@ -172,12 +210,59 @@ namespace HpglHelper
             s.StartPoint.Set(mCurrent);
             if (isPenDown)
             {
-                AddShape(s);
+                AddCommand(s);
             }
             s.ChordToleranceMode = ChordToleranceMode;
             s.Tolerance = tolerance;
             mCurrent.Set(s.EndPoint);
         }
+
+        public void EdgeWedge(double radius, double startDeg, double sweepDeg, double tolerance)
+        {
+            var s = new HpglEdgeWedgeShape();
+            s.Center.Set(mCurrent);
+            s.Radius=radius;
+            s.StartAngleDeg = startDeg;
+            s.SweepAngleDeg = sweepDeg;
+            s.ChordToleranceMode = ChordToleranceMode;
+            s.Tolerance = tolerance;
+            AddCommand(s);
+        }
+
+        public void EdgeRectangle(double x, double y, bool isRelative)
+        {
+            var p1 = isRelative ? new HpglPoint(mCurrent.X + x, mCurrent.Y + y) : new HpglPoint(x, y);
+            var s = new HpglEdgeRectangleShape();
+            s.P0.Set(mCurrent);
+            s.P1.Set(p1);
+            AddCommand(s);
+        }
+
+        public void FillRectangle(double x, double y, bool isRelative)
+        {
+            var p1 = isRelative ? new HpglPoint(mCurrent.X + x, mCurrent.Y + y) : new HpglPoint(x, y);
+            var s = new HpglFillRectangleShape();
+            s.P0.Set(mCurrent);
+            s.P1.Set(p1);
+            s.FillType = FillType;
+            s.PenThickness = GetPenThickness();
+            AddCommand(s);
+        }
+
+        public void FillWedge(double radius, double startDeg, double sweepDeg, double tolerance)
+        {
+            var s = new HpglFillWedgeShape();
+            s.Center.Set(mCurrent);
+            s.Radius = radius;
+            s.StartAngleDeg = startDeg;
+            s.SweepAngleDeg = sweepDeg;
+            s.ChordToleranceMode = ChordToleranceMode;
+            s.Tolerance = tolerance;
+            s.FillType= FillType;
+            s.PenThickness=GetPenThickness();
+            AddCommand(s);
+        }
+
         public void Label(string label)
         {
             var text = new HpglLabelShape();
@@ -187,30 +272,24 @@ namespace HpglHelper
             text.FontWidth = FontWidth;
             text.AngleDeg = TextAngle;
             text.Origin = LabelOrigin;
-            AddShape(text);
+            AddCommand(text);
         }
 
+        /// <summary>
+        /// 文字単位の移動
+        /// </summary>
         public void CharacterMove(double cx, double cy)
         {
-            var sx = (P2.X - P1.X) / (XMax - XMin) * mMillimeterPerUnit;
-            var sy = (P2.Y - P1.Y) / (YMax - YMin) * mMillimeterPerUnit;
+            var sx = (P2X - P1X) / (XMax - XMin) * mMillimeterPerUnit;
+            var sy = (P2Y - P1Y) / (YMax - YMin) * mMillimeterPerUnit;
 
             mCurrent.Offset(10 * cx * FontWidth * sx, 10 * cy * FontHeight * sy);
         }
 
-        //HpglPoint Convert(HpglPoint p)
-        //{
-        //    return p;
-        //}
-        //double Convert(double x)
-        //{
-        //    return x;
-        //}
-
-
-        void AddShape(HpglShape shape)
+        void AddCommand(HpglCommand cmd)
         {
-            Shapes.Add(shape);
+            if(cmd is HpglShape s)  s.PenNumber = SelectedPen;
+            Shapes.Add(cmd);
         }
     }
 }

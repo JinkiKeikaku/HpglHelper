@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using HpglHelper;
+using HpglHelper.Commands;
 
 namespace HpglViewer
 {
@@ -13,7 +14,7 @@ namespace HpglViewer
     /// </summary>
     internal class HpglDrawer
     {
-        List<HpglShape> mShapes;
+        List<HpglCommand> mShapes;
         CadPoint mP1 = new();
         CadPoint mP2 = new();
         double mXMin;
@@ -23,7 +24,13 @@ namespace HpglViewer
         double mMillimeterPerUnit;
         CadPoint mOrigin = new(0, 0);
 
-        public HpglDrawer(List<HpglShape> shapes, double width, double height, double millimeterPerUnit)
+        Color[] mPenColors = new Color[] {
+            Color.Black,Color.Blue,Color.Red,Color.Magenta,
+            Color.Green, Color.Cyan, Color.Yellow, Color.Black};
+
+
+
+        public HpglDrawer(List<HpglCommand> shapes, double width, double height, double millimeterPerUnit)
         {
             mOrigin.X = width;
             mOrigin.Y = height;
@@ -39,27 +46,32 @@ namespace HpglViewer
                 OnDrawShape(g, d, shape);
             }
         }
-        void OnDrawShape(Graphics g, DrawContext d, HpglShape shape)
+        void OnDrawShape(Graphics g, DrawContext d, HpglCommand shape)
         {
             switch (shape)
             {
-                case HpglIPShape s: OnSetIP(s); break;
-                case HpglSCShape s: OnSetSC(s); break;
+                case HpglIPCommand s: OnSetIP(s); break;
+                case HpglSCCommand s: OnSetSC(s); break;
                 case HpglLineShape s: OnDrawLine(g, d, s); break;
-                case HpglCircleShape s: OnDrawCircle(g, d, s); break;
+                case HpglCircleSahpe s: OnDrawCircle(g, d, s); break;
                 case HpglArcShape s: OnDrawArc(g, d, s); break;
                 case HpglLabelShape s: OnDrawLabel(g, d, s); break;
+                case HpglEdgeWedgeShape s: OnDrawEdgeWedge(g, d, s); break;
+                case HpglEdgeRectangleShape s: OnDrawRectangle(g, d, s); break;
+                case HpglFillWedgeShape s: OnDrawFillWedge(g, d, s); break;
+                case HpglFillRectangleShape s: OnDrawFillRectangle(g, d, s); break;
+
             }
         }
 
-        void OnSetIP(HpglIPShape s)
+        void OnSetIP(HpglIPCommand s)
         {
-            mP1.X = s.P1.X;
-            mP1.Y = s.P1.Y;
-            mP2.X = s.P2.X;
-            mP2.Y = s.P2.Y;
+            mP1.X = s.P1X;
+            mP1.Y = s.P1Y;
+            mP2.X = s.P2X;
+            mP2.Y = s.P2Y;
         }
-        void OnSetSC(HpglSCShape s)
+        void OnSetSC(HpglSCCommand s)
         {
             mXMin = s.XMin;
             mYMin = s.YMin;
@@ -67,13 +79,41 @@ namespace HpglViewer
             mYMax = s.YMax;
         }
 
+        /// <summary>
+        /// 塗りつぶしのハッチング間隔
+        /// HpglhelperではHpglFillType.FillGapが-1の場合をデフォルトとしたため変換している。
+        /// 本来デフォルトは、Ｐ１－Ｐ２間の距離の1%であるが、単位系を合わせるために座標変換している。
+        /// また、FillGapがが0の場合はペン幅となるため変換する。これも現在の座標系と合わせるために変換する。
+        /// ただし、本当にこれでいいかは自信がない。
+        /// </summary>
+        /// <param name="t"></param>
+        /// <returns></returns>
+        double GetFillGap(HpglFillShape s)
+        {
+            if (s.FillType.FillGap == 0)
+            {
+                var a = s.PenThickness / mMillimeterPerUnit;
+                var dx = (mXMax - mXMin) / (mP2.X - mP1.X);
+                var dy = (mYMax - mYMin) / (mP2.Y - mP1.Y);
+                return Math.Sqrt(dx * dx + dy * dy) * a;
+            }
+            if (s.FillType.FillGap == -1)
+            {
+                var dx = mXMax - mXMin;
+                var dy = mYMax - mYMin;
+                return Math.Sqrt(dx * dx + dy * dy) / 100;
+            }
+            return s.FillType.FillGap;
+        }
+
         void OnDrawLine(Graphics g, DrawContext d, HpglLineShape shape)
         {
             var p0 = d.DocToCanvas(ConvertPoint(shape.P0));
             var p1 = d.DocToCanvas(ConvertPoint(shape.P1));
+            d.Pen.Color = ConvertPenColor(shape.PenNumber);
             g.DrawLine(d.Pen, p0, p1);
         }
-        void OnDrawCircle(Graphics g, DrawContext d, HpglCircleShape shape)
+        void OnDrawCircle(Graphics g, DrawContext d, HpglCircleSahpe shape)
         {
             var pa = new List<PointF>();
             double a = 0;
@@ -84,6 +124,7 @@ namespace HpglViewer
                 a += shape.Tolerance;
 
             }
+            d.Pen.Color = ConvertPenColor(shape.PenNumber);
             g.DrawPolygon(d.Pen, pa.ToArray());
         }
         void OnDrawArc(Graphics g, DrawContext d, HpglArcShape shape)
@@ -107,9 +148,20 @@ namespace HpglViewer
             pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, sw + sa));
             if (pa.Count > 1)
             {
+                d.Pen.Color = ConvertPenColor(shape.PenNumber);
                 g.DrawLines(d.Pen, pa.ToArray());
             }
         }
+        void OnDrawRectangle(Graphics g, DrawContext d, HpglEdgeRectangleShape shape)
+        {
+            var p0 = d.DocToCanvas(ConvertPoint(shape.P0));
+            var p2 = d.DocToCanvas(ConvertPoint(shape.P1));
+            var p1 = new PointF(p2.X, p0.Y);
+            var p3 = new PointF(p0.X, p2.Y);
+            d.Pen.Color = ConvertPenColor(shape.PenNumber);
+            g.DrawPolygon(d.Pen, new PointF[] { p0, p1, p2, p3 });
+        }
+
         void OnDrawLabel(Graphics g, DrawContext d, HpglLabelShape shape)
         {
             //左下
@@ -122,7 +174,6 @@ namespace HpglViewer
             var w = shape.FontWidth * 10.0f;
             //手抜きでフォント幅は省略
             using var font = new Font("Arial", (float)h, GraphicsUnit.Pixel);
-            using var brush = new SolidBrush(Color.Black);
             var i = shape.Origin;
             var shift = false;
             if (i >= 10)
@@ -142,9 +193,77 @@ namespace HpglViewer
                 x += dx2[i] * w * 0.5;
                 y += dy2[i] * h * 0.5;
             }
+            using var brush = new SolidBrush(ConvertPenColor(shape.PenNumber));
             g.DrawString(shape.Text, font, brush, (float)x, (float)y);
             g.Restore(saved);
         }
+
+        void OnDrawEdgeWedge(Graphics g, DrawContext d, HpglEdgeWedgeShape shape)
+        {
+            var pa = new List<PointF>();
+            double sa = shape.StartAngleDeg;
+            double sw = shape.SweepAngleDeg;
+
+            if (sw < 0)
+            {
+                sa += sw;
+                sw = -sw;
+            }
+            var a = 0.0;
+            while (a < sw)
+            {
+                pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, a + sa));
+                //手抜きでshape.ChordToleranceModeは無視します。
+                a += shape.Tolerance;
+            }
+            pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, sw + sa));
+            pa.Add(d.DocToCanvas(ConvertPoint(shape.Center)));
+            if (pa.Count > 1)
+            {
+                d.Pen.Color = ConvertPenColor(shape.PenNumber);
+                g.DrawPolygon(d.Pen, pa.ToArray());
+            }
+        }
+
+        void OnDrawFillRectangle(Graphics g, DrawContext d, HpglFillRectangleShape shape)
+        {
+            var p0 = d.DocToCanvas(ConvertPoint(shape.P0));
+            var p2 = d.DocToCanvas(ConvertPoint(shape.P1));
+            var p1 = new PointF(p2.X, p0.Y);
+            var p3 = new PointF(p0.X, p2.Y);
+            var b = new SolidBrush(ConvertPenColor(shape.PenNumber));
+            g.FillPolygon(b, new PointF[] { p0, p1, p2, p3 });
+
+        }
+
+
+        void OnDrawFillWedge(Graphics g, DrawContext d, HpglFillWedgeShape shape)
+        {
+            var pa = new List<PointF>();
+            double sa = shape.StartAngleDeg;
+            double sw = shape.SweepAngleDeg;
+
+            if (sw < 0)
+            {
+                sa += sw;
+                sw = -sw;
+            }
+            var a = 0.0;
+            while (a < sw)
+            {
+                pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, a + sa));
+                //手抜きでshape.ChordToleranceModeは無視します。
+                a += shape.Tolerance;
+            }
+            pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, sw + sa));
+            pa.Add(d.DocToCanvas(ConvertPoint(shape.Center)));
+            if (pa.Count > 1)
+            {
+                var b = new SolidBrush(ConvertPenColor(shape.PenNumber));
+                g.FillPolygon(b, pa.ToArray());
+            }
+        }
+
 
         PointF ConvertArcPoint(DrawContext d, HpglPoint p0, double radius, double angle)
         {
@@ -165,6 +284,15 @@ namespace HpglViewer
             var sx = (mP2.X - mP1.X) / (mXMax - mXMin) * mMillimeterPerUnit;
             var sy = (mP2.Y - mP1.Y) / (mYMax - mYMin) * mMillimeterPerUnit;
             return new CadPoint(sx * p.X + p0.X, sy * p.Y + p0.Y) + mOrigin;
+        }
+
+        Color ConvertPenColor(int pen)
+        {
+            if (pen < mPenColors.Length)
+            {
+                return mPenColors[pen];
+            }
+            return Color.Gray;
         }
     }
 }

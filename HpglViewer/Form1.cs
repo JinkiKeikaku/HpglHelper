@@ -1,4 +1,5 @@
 using HpglHelper;
+using HpglHelper.Commands;
 using System.IO;
 
 namespace HpglViewer
@@ -9,7 +10,7 @@ namespace HpglViewer
         const double mPaperHeight = 594;
         const double mMillimeterPerUnit = 0.025;//0.025mm
         DrawContext DrawContext = new((float)mPaperWidth, (float)mPaperHeight);
-        List<HpglShape> mShapes=new();
+        List<HpglCommand> mShapes=new();
         public Form1()
         {
             InitializeComponent();
@@ -23,14 +24,20 @@ namespace HpglViewer
             d.Filter = "Hpgl files|*.hpgl;*.hgl;*.plt;|All files|*.*";
             if (d.ShowDialog() != DialogResult.OK) return;
             OpenFile(d.FileName);
-
+        }
+        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var d = new SaveFileDialog();
+            d.Filter = "Hpgl files|*.hpgl|All files|*.*";
+            if (d.ShowDialog() != DialogResult.OK) return;
+            SaveFile(d.FileName);
         }
 
         private void OpenFile(String path)
         {
             var reader = new HpglReader();
-            using var tr = new StreamReader(path);
-            reader.Read(tr, mPaperWidth, mPaperHeight, mMillimeterPerUnit);
+            using var r = new StreamReader(path);
+            reader.Read(r, mPaperWidth, mPaperHeight, mMillimeterPerUnit);
 
             mShapes = reader.Shapes;
             //スクロールバーなんかの設定。
@@ -38,6 +45,22 @@ namespace HpglViewer
             //panel1を無効化してpanel1のpaintが呼ばれる。
             panel1.Invalidate();
         }
+
+        private void SaveFile(String path)
+        {
+            var writer = new HpglWriter();
+
+            using var w = new StreamWriter(path);
+            writer.Write(w, mMillimeterPerUnit);
+            //スクロールバーなんかの設定。
+            CalcSize();
+            //panel1を無効化してpanel1のpaintが呼ばれる。
+            panel1.Invalidate();
+        }
+
+
+
+
 
         private void panel1_Paint(object sender, PaintEventArgs e)
         {

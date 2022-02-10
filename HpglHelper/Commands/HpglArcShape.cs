@@ -1,5 +1,8 @@
-﻿namespace HpglHelper
+﻿namespace HpglHelper.Commands
 {
+    /// <summary>
+    /// 円弧
+    /// </summary>
     public class HpglArcShape : HpglShape
     {
         /// <summary>
@@ -47,14 +50,16 @@
                 return a * 180 / Math.PI;
             }
         }
-
+        /// <summary>
+        /// 円弧の終点
+        /// </summary>
         public HpglPoint EndPoint
         {
             get
             {
                 var a = Math.PI * (StartAngleDeg + SweepAngleDeg) / 180;
                 return new HpglPoint(
-                    Math.Cos(a)*Radius+Center.X, Math.Sin(a)*Radius+Center.Y);
+                    Math.Cos(a) * Radius + Center.X, Math.Sin(a) * Radius + Center.Y);
             }
         }
     }
