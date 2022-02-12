@@ -15,6 +15,8 @@ namespace HpglHelper
         int mSelectedPen = 1;
         public List<HpglShape> Shapes { get; } = new();
 
+        HpglLabelShape mLabelShape = new();
+
         public void Write(TextWriter w)
         {
             w.WriteLine($"IN;PU0,0;SP{mSelectedPen};");//初期化とペンアップで原点、ペン選択
@@ -112,11 +114,11 @@ namespace HpglHelper
                 {
                     if (PointEQ(p0[0], src[i0]!.Terminal[0]))
                     {
-                        p0[0]=src[i0]!.Terminal[1];
+                        p0[0] = src[i0]!.Terminal[1];
                     }
                     else
                     {
-                        p0[0]=src[i0]!.Terminal[0];
+                        p0[0] = src[i0]!.Terminal[0];
                     }
                     dst.Insert(0, src[i0]!);
                 }
@@ -124,15 +126,15 @@ namespace HpglHelper
                 {
                     if (PointEQ(p0[1], src[i0]!.Terminal[0]))
                     {
-                        p0[1]=src[i0]!.Terminal[1];
+                        p0[1] = src[i0]!.Terminal[1];
                     }
                     else
                     {
-                        p0[1]=src[i0]!.Terminal[0];
+                        p0[1] = src[i0]!.Terminal[0];
                     }
                     dst.Add(src[i0]!);
                 }
-                if(i0 >= 0)
+                if (i0 >= 0)
                 {
                     src[i0] = null;
                 }
@@ -292,9 +294,7 @@ namespace HpglHelper
             {
                 w.WriteLine($"EW{s.Radius:0.#####},{s.StartAngleDeg:0.#####},{s.SweepAngleDeg:0.#####};");
             }
-
         }
-
 
         void WriteEdgeRectangle(TextWriter w, HpglEdgeRectangleShape s)
         {
@@ -334,10 +334,26 @@ namespace HpglHelper
                 w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
                 mCurrent.Set(p1);
             }
-            var a = s.AngleDeg * Math.PI / 180;
-            var dix = Math.Cos(a);
-            var diy = Math.Sin(a);
-            w.WriteLine($"SI{s.FontWidth/10},{s.FontHeight/10};SL{s.Slant};DI{dix},{diy};LO{s.Origin};LB{s.Text}\x03;");
+            if(!FloatEQ(mLabelShape.Slant, s.Slant)) w.Write($"SL{s.Slant:0.#####};");
+            if (!FloatEQ(mLabelShape.AngleDeg, s.AngleDeg))
+            {
+                var a = s.AngleDeg * Math.PI / 180;
+                var dix = Math.Cos(a);
+                var diy = Math.Sin(a);
+                w.Write($"DI{dix:0.#####},{diy:0.#####};");
+            }
+            if(mLabelShape.FontWidth != s.FontWidth || mLabelShape.FontHeight != s.FontHeight)
+            {
+                w.Write($"SI{s.FontWidth / 10:0.#####},{s.FontHeight / 10:0.#####};");
+            }
+            if(mLabelShape.LetterSpace != s.LetterSpace || mLabelShape.LineSpace != s.LineSpace)
+            {
+                var letterSpacing = s.LetterSpace / (1.5 * s.FontWidth) - 1.0;
+                var lineSpacing = s.LineSpace / (2 * s.FontHeight) - 1.0;
+                w.Write($"ES{letterSpacing:0.#####},{lineSpacing:0.#####};");
+            }
+            if(mLabelShape.Origin != s.Origin) w.Write($"LO{s.Origin};");
+            w.WriteLine($"LB{s.Text}\x03;");
         }
 
         void UpdateLines(TextWriter w)

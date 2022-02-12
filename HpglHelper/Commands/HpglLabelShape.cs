@@ -27,5 +27,13 @@
         /// ＋10で中以外の方向は文字幅文字高さの半分移動する。
         /// </summary>
         public int Origin { get; set; } = 1;
+        /// <summary>
+        /// 文字間隔（mm）
+        /// </summary>
+        public double LetterSpace { get; set; } = 0.0;
+        /// <summary>
+        /// 行間（mm）
+        /// </summary>
+        public double LineSpace { get; set; }=0.0;
     }
 }

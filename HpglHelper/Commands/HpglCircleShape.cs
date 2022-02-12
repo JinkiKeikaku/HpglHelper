@@ -10,7 +10,7 @@
         /// </summary>
         public HpglPoint Center { get; set; } = new();
         /// <summary>
-        /// 半径
+        /// 半径(mm)
         /// </summary>
         public double Radius { get; set; }
         /// <summary>

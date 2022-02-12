@@ -29,6 +29,8 @@ namespace HpglHelper
         public double FontHeight { get; set; } = DefaultFontHeight;
         public double FontWidth { get; set; } = DefaultFontWidth;
         public string FontName { get; set; } = DefaultFontName;
+        public double LabelLetterSapce { get; set; } = 0;
+        public double LabelLineSapce { get; set; } = 0;
         public double TextAngle { get; set; } = 0.0;
         /// <summary>
         /// 1:左下、２:左中、3:左上、4:中下、5:中中、6:中上、7:右下、8:右中、9:右上
@@ -77,7 +79,13 @@ namespace HpglHelper
             FontWidth = DefaultFontWidth;
         }
 
-        public void Reset()
+        public void InitLabelSpace()
+        {
+            LabelLetterSapce = 0;
+            LabelLineSapce = 0;
+    }
+
+    public void Reset()
         {
             Shapes.Clear();
             SetIP();
@@ -265,6 +273,9 @@ namespace HpglHelper
             text.FontWidth = FontWidth;
             text.AngleDeg = TextAngle;
             text.Origin = LabelOrigin;
+            text.LetterSpace = FontWidth * 1.5 * (1 + LabelLetterSapce);
+            text.LineSpace = FontHeight * 2.0 * (1 + LabelLineSapce);
+
             AddCommand(text);
         }
 

@@ -129,6 +129,7 @@ namespace HpglHelper
                 { "WG",()=>{ FillWedge(); } },
                 { "RA",()=>{ FillRectangle(false); } },
                 { "RR",()=>{ FillRectangle(true); } },
+                { "ES",()=>{ LabelExtraSpace(); } },
             };
 
             if (cmdActions.TryGetValue(mCommand, out var action))
@@ -276,6 +277,27 @@ namespace HpglHelper
                 if (a.Count < 2) return;
                 mPlotter.FontWidth = a[0]*10;
                 mPlotter.FontHeight = a[1]*10;
+            }
+        }
+
+        void LabelExtraSpace()
+        {
+            var a = GetValues();
+            if (a.Count == 0)
+            {
+                mPlotter.InitLabelSpace();
+            }
+            else
+            {
+                mPlotter.LabelLetterSapce = a[0];
+                if (a.Count == 1)
+                {
+                    mPlotter.LabelLineSapce = 0;
+                }
+                else
+                {
+                    mPlotter.LabelLineSapce = a[1];
+                }
             }
         }
         void AbsoluteDirection()
