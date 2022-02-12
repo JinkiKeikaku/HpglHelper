@@ -179,7 +179,7 @@ namespace HpglHelper
 
         public void Circle(double radius, double tolerance)
         {
-            var s = new HpglCircleSahpe();
+            var s = new HpglCircleShape();
             s.Center.Set(mCurrent);
             s.Radius = ConvertLength(radius);
             s.Flatness = GetFlatness();
@@ -195,7 +195,7 @@ namespace HpglHelper
             var dp = mCurrent - p0;
             dp.Y /= GetFlatness();
             s.Center.Set(p0);
-            s.Radius = dp.HYpot();
+            s.Radius = dp.Hypot();
             s.Flatness = GetFlatness();
             s.StartAngleDeg = 180 * Math.Atan2(dp.Y, dp.X) / Math.PI;
             s.SweepAngleDeg = sweepDeg;

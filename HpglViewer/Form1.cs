@@ -10,7 +10,7 @@ namespace HpglViewer
         const double mPaperHeight = 594;
         const double mMillimeterPerUnit = 0.025;//0.025mm
         DrawContext DrawContext = new((float)mPaperWidth, (float)mPaperHeight);
-        List<HpglCommand> mShapes=new();
+        List<HpglCommand> mShapes = new();
         public Form1()
         {
             InitializeComponent();
@@ -51,11 +51,24 @@ namespace HpglViewer
             var writer = new HpglWriter();
 
             using var w = new StreamWriter(path);
-//            writer.Write(w, mMillimeterPerUnit);
-            //スクロールバーなんかの設定。
-            CalcSize();
-            //panel1を無効化してpanel1のpaintが呼ばれる。
-            panel1.Invalidate();
+            foreach (var s in mShapes)
+            {
+                if (s is HpglShape ss)
+                    writer.Shapes.Add(ss);
+            }
+            //writer.Shapes.Add(new HpglCircleShape()
+            //{
+            //    Center = new HpglPoint(50, 50),
+            //    Radius = 50,
+            //});
+            //writer.Shapes.Add(new HpglCircleShape()
+            //{
+            //    Center = new HpglPoint(50, 50),
+            //    Radius = 50,
+            //    Flatness =2,
+            //});
+
+            writer.Write(w);
         }
 
 
@@ -71,8 +84,8 @@ namespace HpglViewer
             g.TranslateTransform(
                 DrawContext.Scale * 0 + panel1.AutoScrollPosition.X,
                 DrawContext.Scale * DrawContext.PaperSize.Height + panel1.AutoScrollPosition.Y
-                //DrawContext.Scale * DrawContext.PaperSize.Width / 2 + panel1.AutoScrollPosition.X,
-                //DrawContext.Scale * DrawContext.PaperSize.Height / 2 + panel1.AutoScrollPosition.Y
+            //DrawContext.Scale * DrawContext.PaperSize.Width / 2 + panel1.AutoScrollPosition.X,
+            //DrawContext.Scale * DrawContext.PaperSize.Height / 2 + panel1.AutoScrollPosition.Y
             );
             g.ScaleTransform(DrawContext.Scale, DrawContext.Scale);
             var drawer = new HpglDrawer(mShapes, mPaperWidth, mPaperHeight, mMillimeterPerUnit);

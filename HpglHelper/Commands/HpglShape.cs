@@ -2,6 +2,6 @@
 {
     public class HpglShape : HpglCommand
     {
-        public int PenNumber { get; set; }
+        public int PenNumber { get; set; } = 1;
     }
 }

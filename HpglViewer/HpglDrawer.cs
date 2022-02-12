@@ -53,7 +53,7 @@ namespace HpglViewer
                 //case HpglIPCommand s: OnSetIP(s); break;
                 //case HpglSCCommand s: OnSetSC(s); break;
                 case HpglLineShape s: OnDrawLine(g, d, s); break;
-                case HpglCircleSahpe s: OnDrawCircle(g, d, s); break;
+                case HpglCircleShape s: OnDrawCircle(g, d, s); break;
                 case HpglArcShape s: OnDrawArc(g, d, s); break;
                 case HpglLabelShape s: OnDrawLabel(g, d, s); break;
                 case HpglEdgeWedgeShape s: OnDrawEdgeWedge(g, d, s); break;
@@ -64,22 +64,6 @@ namespace HpglViewer
             }
         }
 
-        //void OnSetIP(HpglIPCommand s)
-        //{
-        //    mP1.X = s.P1X;
-        //    mP1.Y = s.P1Y;
-        //    mP2.X = s.P2X;
-        //    mP2.Y = s.P2Y;
-        //}
-        //void OnSetSC(HpglSCCommand s)
-        //{
-        //    mXMin = s.XMin;
-        //    mYMin = s.YMin;
-        //    mXMax = s.XMax;
-        //    mYMax = s.YMax;
-        //}
-
-
         void OnDrawLine(Graphics g, DrawContext d, HpglLineShape shape)
         {
             var p0 = d.DocToCanvas(ConvertPoint(shape.P0));
@@ -87,13 +71,13 @@ namespace HpglViewer
             d.Pen.Color = ConvertPenColor(shape.PenNumber);
             g.DrawLine(d.Pen, p0, p1);
         }
-        void OnDrawCircle(Graphics g, DrawContext d, HpglCircleSahpe shape)
+        void OnDrawCircle(Graphics g, DrawContext d, HpglCircleShape shape)
         {
             var pa = new List<PointF>();
             double a = 0;
             while (a < 360)
             {
-                pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, a));
+                pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, shape.Flatness, a));
                 //手抜きでshape.ChordToleranceModeは無視します。
                 a += shape.Tolerance;
 
@@ -115,11 +99,11 @@ namespace HpglViewer
             var a = 0.0;
             while (a < sw)
             {
-                pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, a + sa));
+                pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, shape.Flatness, a + sa));
                 //手抜きでshape.ChordToleranceModeは無視します。
                 a += shape.Tolerance;
             }
-            pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, sw + sa));
+            pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, shape.Flatness, sw + sa));
             if (pa.Count > 1)
             {
                 d.Pen.Color = ConvertPenColor(shape.PenNumber);
@@ -186,11 +170,11 @@ namespace HpglViewer
             var a = 0.0;
             while (a < sw)
             {
-                pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, a + sa));
+                pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, shape.Flatness, a + sa));
                 //手抜きでshape.ChordToleranceModeは無視します。
                 a += shape.Tolerance;
             }
-            pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, sw + sa));
+            pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, shape.Flatness, sw + sa));
             pa.Add(d.DocToCanvas(ConvertPoint(shape.Center)));
             if (pa.Count > 1)
             {
@@ -225,11 +209,11 @@ namespace HpglViewer
             var a = 0.0;
             while (a < sw)
             {
-                pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, a + sa));
+                pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, shape.Flatness, a + sa));
                 //手抜きでshape.ChordToleranceModeは無視します。
                 a += shape.Tolerance;
             }
-            pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, sw + sa));
+            pa.Add(ConvertArcPoint(d, shape.Center, shape.Radius, shape.Flatness, sw + sa));
             pa.Add(d.DocToCanvas(ConvertPoint(shape.Center)));
             if (pa.Count > 1)
             {
@@ -239,12 +223,12 @@ namespace HpglViewer
         }
 
 
-        PointF ConvertArcPoint(DrawContext d, HpglPoint p0, double radius, double angle)
+        PointF ConvertArcPoint(DrawContext d, HpglPoint p0, double radius, double flatness, double angle)
         {
             var a = angle * Math.PI / 180;
             var p = new HpglPoint(
                 p0.X + Math.Cos(a) * radius,
-                p0.Y + Math.Sin(a) * radius
+                p0.Y + Math.Sin(a) * radius* flatness
             );
             return d.DocToCanvas(ConvertPoint(p));
         }

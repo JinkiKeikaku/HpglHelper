@@ -35,7 +35,7 @@ namespace HpglHelper
             Offset(dp.X, dp.Y);
         }
 
-        public double HYpot() => Math.Sqrt(X * X + Y * Y);
+        public double Hypot() => Math.Sqrt(X * X + Y * Y);
 
         public override string ToString() => $"{X} {Y}";
 
@@ -53,7 +53,14 @@ namespace HpglHelper
             return new HpglPoint(p1.X + p2.X, p1.Y + p2.Y);
         }
 
+        public static double Epsilon { get; set; } = 0.000001;
 
+        public static bool FloatEQ(double a, double b) => Math.Abs(a - b) < Epsilon;
+
+        public static bool PointEQ(HpglPoint p1, HpglPoint p2) 
+        {
+            return FloatEQ(p1.X, p2.X) && FloatEQ(p1.Y, p2.Y);
+        }
 
     }
 }

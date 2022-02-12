@@ -3,7 +3,7 @@
     /// <summary>
     /// 円
     /// </summary>
-    public class HpglCircleSahpe : HpglShape
+    public class HpglCircleShape : HpglShape
     {
         /// <summary>
         /// 中心
@@ -13,9 +13,8 @@
         /// 半径
         /// </summary>
         public double Radius { get; set; }
-
         /// <summary>
-        /// 扁平率
+        /// 扁平率。保存時は無視されます（保存時は常に1.0として処理）。
         /// </summary>
         public double Flatness { get; set; } = 1.0;
 
