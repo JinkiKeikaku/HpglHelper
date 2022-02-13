@@ -8,6 +8,9 @@ namespace HpglHelper
     /// </summary>
     public class HpglWriter
     {
+        bool mIsPolygonBuffer = false;
+        int mPolygonMode = 0;
+        bool mIsFirstPolygonPoint = true;
         readonly double mmPerUnit = 0.025;//0.025mm
         HpglPoint mCurrent = new(0, 0);
         List<HpglPoint> mLinePoints = new(); //Line用の点バッファ
@@ -19,18 +22,19 @@ namespace HpglHelper
 
         public void Write(TextWriter w)
         {
-            w.WriteLine($"IN;PU0,0;SP{mSelectedPen};");//初期化とペンアップで原点、ペン選択
-            w.WriteLine($"IP0,0,4000,4000; SC0,100,0,100;");//座標単位をmmにする。
-            mCurrent.Set(0, 0);
-            mIsPneDown = false;
-
-            var items = new List<Item?>();
+            if (!mIsPolygonBuffer)
+            {
+                w.WriteLine($"IN;PU0,0;SP{mSelectedPen};");//初期化とペンアップで原点、ペン選択
+                w.WriteLine($"IP0,0,4000,4000; SC0,100,0,100;");//座標単位をmmにする。
+                mCurrent.Set(0, 0);
+                mIsPneDown = false;
+            }
+            List<Item?> items = new();
             foreach (var shape in Shapes)
             {
                 var item = ConvertItem(shape);
                 if (item != null) items.Add(item);
             }
-
             items = GetSortedItems(items);
             while (true)
             {
@@ -40,8 +44,10 @@ namespace HpglHelper
                 items[pos] = null;
             }
             UpdateLines(w);
-
-            w.WriteLine($"PU0,0;");//終わったら原点に戻す。
+            if (!mIsPolygonBuffer)
+            {
+                w.WriteLine($"PU0,0;");//終わったら原点に戻す。
+            }
 
         }
         class Item
@@ -56,9 +62,9 @@ namespace HpglHelper
             }
             public bool IsClosed => PointEQ(Terminal[0], Terminal[1]);
         }
-        List<Item> GetSortedItems(List<Item> src)
+        List<Item?> GetSortedItems(List<Item?> src)
         {
-            var dst = new List<Item>();
+            var dst = new List<Item?>();
             for (var i = 0; i < src.Count; i++)
             {
                 var d = GetSortedItems(src, i);
@@ -152,11 +158,12 @@ namespace HpglHelper
                 HpglEdgeRectangleShape s => new Item(s, s.P0, s.P0),
                 HpglEdgeWedgeShape s => new Item(s, s.Center, s.Center),
                 HpglLabelShape s => new Item(s, s.P0, s.P0),
+                HpglPolygonShape s => new Item(s, new HpglPoint(), new HpglPoint()),
                 _ => null,
             };
         }
 
-        (int pos, int ip) GetNearPoint(HpglPoint p, List<Item> items)
+        (int pos, int ip) GetNearPoint(HpglPoint p, List<Item?> items)
         {
             var kMin = -1;
             var iMin = -1;
@@ -206,18 +213,48 @@ namespace HpglHelper
                     UpdateLines(w);
                     WriteLabel(w, s);
                     break;
+                case HpglPolygonShape s:
+                    UpdateLines(w);
+                    WritePolygon(w, s);
+                    break;
+
             }
         }
 
         void CheckPen(TextWriter w, HpglShape s)
         {
-            if (mSelectedPen != s.PenNumber)
+            CheckPen(w, s.PenNumber);
+        }
+
+        void CheckPen(TextWriter w, int pen)
+        {
+            if (mSelectedPen != pen)
             {
-                mSelectedPen = s.PenNumber;
+                mSelectedPen = pen;
                 w.Write($"SP{mSelectedPen};");
             }
         }
 
+
+        void CheckPolygonFirstPoint(TextWriter w, HpglPoint p1)
+        {
+            if (mIsPolygonBuffer && mIsFirstPolygonPoint)
+            {
+                if (mPolygonMode == 0)
+                {
+                    w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
+                    w.WriteLine($"PM{mPolygonMode};");
+                }
+                else
+                {
+                    w.WriteLine($"PM{mPolygonMode};");
+                    w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
+                }
+                mIsFirstPolygonPoint = false;
+            }
+            mIsPneDown = false;
+            mCurrent.Set(p1);
+        }
 
         void WriteLine(TextWriter w, HpglLineShape s, int iTerminal)
         {
@@ -228,7 +265,11 @@ namespace HpglHelper
                 mIsPneDown = false;
             }
             CheckPen(w, s);
-            if (mLinePoints.Count == 0) mLinePoints.Add(p1);
+            if (mLinePoints.Count == 0)
+            {
+                CheckPolygonFirstPoint(w, p1);
+                mLinePoints.Add(p1);
+            }
             mLinePoints.Add(p2);
             mCurrent.Set(p2);
         }
@@ -236,6 +277,7 @@ namespace HpglHelper
         {
             CheckPen(w, s);
             var p1 = s.Center;
+            CheckPolygonFirstPoint(w, p1);
             if (!PointEQ(mCurrent, p1))
             {
                 w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
@@ -256,6 +298,7 @@ namespace HpglHelper
             var (p1, p2) = iTerminal == 0 ? (s.StartPoint, s.EndPoint) : (s.EndPoint, s.StartPoint);
             var a = iTerminal == 0 ? s.SweepAngleDeg : -s.SweepAngleDeg;
             var p0 = s.Center;
+            CheckPolygonFirstPoint(w, p1);
             if (!PointEQ(mCurrent, p1))
             {
                 w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
@@ -324,6 +367,47 @@ namespace HpglHelper
             var p2 = pa[(iMin + 2) % 4];
             w.WriteLine($"EA{p2.X:0.#####},{p2.Y:0.#####};");
         }
+        void WritePolygon(TextWriter w, HpglPolygonShape s)
+        {
+            if (s.PolygonBufferList.Count == 0) return;
+
+            //            w.Write($"PM0;");
+
+            int polygonMode = 0;
+
+            for (var i = 0; i < s.PolygonBufferList.Count; i++)
+            {
+                var pb = s.PolygonBufferList[i];
+                if (pb.Count == 0) continue;
+
+                var writer = new HpglWriter();
+                writer.mIsPolygonBuffer = true;
+                writer.mPolygonMode = polygonMode;
+
+                foreach (var ss in pb)
+                {
+                    if (ss is HpglLineShape || ss is HpglCircleShape || ss is HpglArcShape)
+                    {
+                        writer.Shapes.Add(ss);
+                    }
+                }
+                writer.Write(w);
+                polygonMode = 1;
+            }
+            if (polygonMode == 0) return;
+            w.Write($"PM2;");
+            if (s.FillPen >= 0)
+            {
+                CheckPen(w, s.FillPen);
+                w.Write("FP;");
+            }
+            if (s.EdgePen >= 0)
+            {
+                CheckPen(w, s.EdgePen);
+                w.Write("EP;");
+            }
+            w.WriteLine();
+        }
 
         void WriteLabel(TextWriter w, HpglLabelShape s)
         {
@@ -334,25 +418,38 @@ namespace HpglHelper
                 w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
                 mCurrent.Set(p1);
             }
-            if(!FloatEQ(mLabelShape.Slant, s.Slant)) w.Write($"SL{s.Slant:0.#####};");
+            if (!FloatEQ(mLabelShape.Slant, s.Slant))
+            {
+                w.Write($"SL{s.Slant:0.#####};");
+                mLabelShape.Slant = s.Slant;
+            }
             if (!FloatEQ(mLabelShape.AngleDeg, s.AngleDeg))
             {
                 var a = s.AngleDeg * Math.PI / 180;
                 var dix = Math.Cos(a);
                 var diy = Math.Sin(a);
                 w.Write($"DI{dix:0.#####},{diy:0.#####};");
+                mLabelShape.AngleDeg = s.AngleDeg;
             }
-            if(mLabelShape.FontWidth != s.FontWidth || mLabelShape.FontHeight != s.FontHeight)
+            if (!FloatEQ(mLabelShape.FontWidth, s.FontWidth) || !FloatEQ(mLabelShape.FontHeight, s.FontHeight))
             {
                 w.Write($"SI{s.FontWidth / 10:0.#####},{s.FontHeight / 10:0.#####};");
+                mLabelShape.FontWidth = s.FontWidth;
+                mLabelShape.FontHeight = s.FontHeight;
             }
-            if(mLabelShape.LetterSpace != s.LetterSpace || mLabelShape.LineSpace != s.LineSpace)
+            if (!FloatEQ(mLabelShape.LetterSpace, s.LetterSpace) || !FloatEQ(mLabelShape.LineSpace, s.LineSpace))
             {
                 var letterSpacing = s.LetterSpace / (1.5 * s.FontWidth) - 1.0;
                 var lineSpacing = s.LineSpace / (2 * s.FontHeight) - 1.0;
                 w.Write($"ES{letterSpacing:0.#####},{lineSpacing:0.#####};");
+                mLabelShape.LetterSpace = s.LetterSpace;
+                mLabelShape.LineSpace = s.LineSpace;
             }
-            if(mLabelShape.Origin != s.Origin) w.Write($"LO{s.Origin};");
+            if (mLabelShape.Origin != s.Origin)
+            {
+                w.Write($"LO{s.Origin};");
+                mLabelShape.Origin = s.Origin;
+            }
             w.WriteLine($"LB{s.Text}\x03;");
         }
 

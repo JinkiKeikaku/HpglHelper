@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -60,6 +61,7 @@ namespace HpglViewer
                 case HpglEdgeRectangleShape s: OnDrawRectangle(g, d, s); break;
                 case HpglFillWedgeShape s: OnDrawFillWedge(g, d, s); break;
                 case HpglFillRectangleShape s: OnDrawFillRectangle(g, d, s); break;
+                case HpglPolygonShape s: OnDrawPolygon(g, d, s); break;
 
             }
         }
@@ -189,7 +191,7 @@ namespace HpglViewer
             var p2 = d.DocToCanvas(ConvertPoint(shape.P1));
             var p1 = new PointF(p2.X, p0.Y);
             var p3 = new PointF(p0.X, p2.Y);
-            var b = new SolidBrush(ConvertPenColor(shape.PenNumber));
+            using var b = new SolidBrush(ConvertPenColor(shape.PenNumber));
             g.FillPolygon(b, new PointF[] { p0, p1, p2, p3 });
 
         }
@@ -217,8 +219,59 @@ namespace HpglViewer
             pa.Add(d.DocToCanvas(ConvertPoint(shape.Center)));
             if (pa.Count > 1)
             {
-                var b = new SolidBrush(ConvertPenColor(shape.PenNumber));
+                using var b = new SolidBrush(ConvertPenColor(shape.PenNumber));
                 g.FillPolygon(b, pa.ToArray());
+            }
+        }
+
+
+        void OnDrawPolygon(Graphics g, DrawContext d, HpglPolygonShape shape)
+        {
+            var path = new GraphicsPath();
+            foreach (var pb in shape.PolygonBufferList)
+            {
+                foreach (var ss in pb)
+                {
+                    switch (ss)
+                    {
+                        case HpglLineShape s:
+                            {
+                                path.AddLine(d.DocToCanvas(ConvertPoint(s.P0)), d.DocToCanvas(ConvertPoint(s.P1)));
+                            }
+                            break;
+                        case HpglCircleShape s:
+                            {
+                                var p0 = d.DocToCanvas(ConvertPoint(s.Center));
+                                var rx = d.DocToCanvas(s.Radius);
+                                var ry = d.DocToCanvas(s.Radius * s.Flatness);
+                                path.AddEllipse(p0.X - rx, p0.Y - ry, rx * 2, ry * 2);
+
+                            }
+                            break;
+                        case HpglArcShape s:
+                            {
+                                var p0 = d.DocToCanvas(ConvertPoint(s.Center));
+                                var rx = d.DocToCanvas(s.Radius);
+                                var ry = d.DocToCanvas(s.Radius * s.Flatness);
+                                path.AddArc(
+                                    p0.X - rx, p0.Y - ry, rx * 2, ry * 2, 
+                                    d.DocToCanvasAngle(s.StartAngleDeg), 
+                                    d.DocToCanvasAngle(s.SweepAngleDeg));
+                            }
+                            break;
+                    }
+                }
+            }
+
+            if (shape.FillPen >= 0)
+            {
+                using var b = new SolidBrush(ConvertPenColor(shape.PenNumber));
+                g.FillPath(b, path);
+            }
+            if(shape.EdgePen >= 0)
+            {
+                d.Pen.Color = ConvertPenColor(shape.PenNumber);
+                g.DrawPath(d.Pen, path);
             }
         }
 
@@ -228,7 +281,7 @@ namespace HpglViewer
             var a = angle * Math.PI / 180;
             var p = new HpglPoint(
                 p0.X + Math.Cos(a) * radius,
-                p0.Y + Math.Sin(a) * radius* flatness
+                p0.Y + Math.Sin(a) * radius * flatness
             );
             return d.DocToCanvas(ConvertPoint(p));
         }

@@ -130,6 +130,9 @@ namespace HpglHelper
                 { "RA",()=>{ FillRectangle(false); } },
                 { "RR",()=>{ FillRectangle(true); } },
                 { "ES",()=>{ LabelExtraSpace(); } },
+                { "PM",()=>{ PolygonMode(); } },
+                { "EP",()=>{ mPlotter.EdgePolygon(); } },
+                { "FP",()=>{ mPlotter.FillPolygon(); } },
             };
 
             if (cmdActions.TryGetValue(mCommand, out var action))
@@ -379,6 +382,12 @@ namespace HpglHelper
             var a = GetValues();
             if (a.Count == 0) return;
             mPlotter.FillRectangle(a[0], a[1], isRelative);
+        }
+        void PolygonMode()
+        {
+            var a = GetValues();
+            if (a.Count < 1) return;
+            mPlotter.ExecPolygonMode((int)a[0]);
         }
     }
 }

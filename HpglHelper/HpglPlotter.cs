@@ -87,7 +87,6 @@ namespace HpglHelper
 
     public void Reset()
         {
-            Shapes.Clear();
             SetIP();
             SetSC();
             mCurrent = new HpglPoint(0, 0);
@@ -289,8 +288,67 @@ namespace HpglHelper
             mCurrent.Offset(cx * FontWidth, cy * FontHeight);
         }
 
+
+
+        HpglPolygonShape? mOpenedPolygonShape = null;
+        HpglPolygonShape? mClosedPolygonShape = null;
+        List<HpglShape>? mPolygonBuffer=null;
+        public void ExecPolygonMode(int mode)
+        {
+            //ポリゴン中でもIN命令は有効なので注意
+            switch (mode)
+            {
+                case 0: //enter polygon mode
+                    mOpenedPolygonShape = new HpglPolygonShape();
+                    mClosedPolygonShape = null;
+                    mPolygonBuffer = new();
+                    break;
+                case 1: //close polygon
+                    if (mPolygonBuffer != null && mOpenedPolygonShape!= null) {
+                        mOpenedPolygonShape!.Add(mPolygonBuffer!);
+                        mPolygonBuffer = new();
+                    }
+                    break;
+                case 2: //close polygon and exit polygon mode
+                    if (mPolygonBuffer != null && mOpenedPolygonShape != null)
+                    {
+                        mOpenedPolygonShape?.Add(mPolygonBuffer!);
+                        mPolygonBuffer = null;
+                        mClosedPolygonShape = mOpenedPolygonShape;
+                        mOpenedPolygonShape = null;
+                        AddCommand(mClosedPolygonShape!);
+                    }
+                    break;
+            }
+        }
+
+        public void EdgePolygon()
+        {
+            if (mClosedPolygonShape != null)
+            {
+                mClosedPolygonShape.EdgePen = SelectedPen;
+            }
+        }
+        public void FillPolygon()
+        {
+            if (mClosedPolygonShape != null)
+            {
+                mClosedPolygonShape.FillPen = SelectedPen;
+            }
+        }
+
         void AddCommand(HpglCommand cmd)
         {
+            if(mPolygonBuffer != null && cmd is HpglShape ss)
+            {
+                if (ss is HpglCircleShape || ss is HpglArcShape || ss is HpglLineShape)
+                {
+                    mPolygonBuffer.Add(ss);
+                }
+                return;
+            }
+
+
             if (cmd is HpglShape s) { 
                 s.PenNumber = SelectedPen; 
             }
@@ -312,9 +370,6 @@ namespace HpglHelper
                         fs.FillType.FillGap = FillType.FillGap * mMillimeterPerUnit;
                         break;
                 }
-
-
-
             }
             Shapes.Add(cmd);
         }
