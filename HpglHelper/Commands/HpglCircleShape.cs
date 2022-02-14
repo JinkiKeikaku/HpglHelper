@@ -23,6 +23,7 @@
         /// 0：角度。 1:円弧上の2点を通る直線と円弧の間の最長垂線距離。
         /// </summary>
         public int ChordToleranceMode { get; set; } = 0;
+
         /// <summary>
         /// 分解能。ChordToleranceModeの値により角度もしくは偏倚距離。
         /// </summary>
