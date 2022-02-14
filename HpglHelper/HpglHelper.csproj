@@ -5,6 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <Version>1.0.0</Version>
+    <Authors>Junkbulk</Authors>
+    <Company>Jinki-Keikaku</Company>
   </PropertyGroup>
 
 </Project>
