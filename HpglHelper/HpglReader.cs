@@ -3,6 +3,9 @@ using System.Text;
 
 namespace HpglHelper
 {
+    /// <summary>
+    /// Hpgl読み込みクラス
+    /// </summary>
     public class HpglReader
     {
         enum State
@@ -17,8 +20,11 @@ namespace HpglHelper
         List<string> mParams = new();
         HpglPlotter mPlotter = new();
         int mLabelTerminator = 3;
-        public List<HpglCommand> Shapes => mPlotter.Shapes;
 
+        /// <summary>
+        /// 読み込み結果の図形
+        /// </summary>
+        public List<HpglCommand> Shapes => mPlotter.Shapes;
 
         /// <summary>
         /// ファイル読み込み

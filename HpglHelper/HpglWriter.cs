@@ -251,15 +251,22 @@ namespace HpglHelper
                 mIsFirstPolygonPoint = false;
                 if (mPolygonMode == 0)
                 {
-                    w.WriteLine($"PU{ConvertPoint(p1)};PM{mPolygonMode};");
-                    mIsPenDown = false;
-                    mCurrent.Set(p1);
+                    if(!PointEQ(mCurrent, p1))
+                    {
+                        w.Write($"PU{ConvertPoint(p1)};");
+                        mIsPenDown = false;
+                        mCurrent.Set(p1);
+                    }
+                    w.WriteLine($"PM{mPolygonMode};");
                     return;
                 }
             }
-            w.WriteLine($"PU{ConvertPoint(p1)};");
-            mIsPenDown = false;
-            mCurrent.Set(p1);
+            if (!PointEQ(mCurrent, p1))
+            {
+                w.Write($"PU{ConvertPoint(p1)};");
+                mIsPenDown = false;
+                mCurrent.Set(p1);
+            }
         }
 
         void WriteLine(TextWriter w, HpglLineShape s, int iTerminal)
