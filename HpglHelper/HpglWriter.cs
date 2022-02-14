@@ -14,20 +14,29 @@ namespace HpglHelper
         readonly double mmPerUnit = 0.025;//0.025mm
         HpglPoint mCurrent = new(0, 0);
         List<HpglPoint> mLinePoints = new(); //Line用の点バッファ
-        bool mIsPneDown = false;
+        bool mIsPenDown = false;
         int mSelectedPen = 1;
-        public List<HpglShape> Shapes { get; } = new();
-
         HpglLabelShape mLabelShape = new();
+        List<HpglShape> Shapes { get; } = new();
 
-        public void Write(TextWriter w)
+        /// <summary>
+        /// 保存する図形の登録
+        /// </summary>
+        public void AddShape(HpglShape shape) => Shapes.Add(shape);
+
+        /// <summary>
+        /// 保存処理。AddShape()した図形を保存。
+        /// </summary>
+        /// <param name="w"></param>
+        /// <param name="returnToHome">最後に（０,０）にペンを戻すときtrue</param>
+        public void Write(TextWriter w, bool returnToHome = false)
         {
             if (!mIsPolygonBuffer)
             {
                 w.WriteLine($"IN;PU0,0;SP{mSelectedPen};");//初期化とペンアップで原点、ペン選択
-                w.WriteLine($"IP0,0,4000,4000; SC0,100,0,100;");//座標単位をmmにする。
+                                                           //                w.WriteLine($"IP0,0,4000,4000; SC0,100,0,100;");//座標単位をmmにする。
                 mCurrent.Set(0, 0);
-                mIsPneDown = false;
+                mIsPenDown = false;
             }
             List<Item?> items = new();
             foreach (var shape in Shapes)
@@ -44,12 +53,12 @@ namespace HpglHelper
                 items[pos] = null;
             }
             UpdateLines(w);
-            if (!mIsPolygonBuffer)
+            if (!mIsPolygonBuffer && returnToHome)
             {
                 w.WriteLine($"PU0,0;");//終わったら原点に戻す。
             }
-
         }
+
         class Item
         {
             public HpglShape Shape;
@@ -235,24 +244,21 @@ namespace HpglHelper
             }
         }
 
-
         void CheckPolygonFirstPoint(TextWriter w, HpglPoint p1)
         {
             if (mIsPolygonBuffer && mIsFirstPolygonPoint)
             {
+                mIsFirstPolygonPoint = false;
                 if (mPolygonMode == 0)
                 {
-                    w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
-                    w.WriteLine($"PM{mPolygonMode};");
+                    w.WriteLine($"PU{ConvertPoint(p1)};PM{mPolygonMode};");
+                    mIsPenDown = false;
+                    mCurrent.Set(p1);
+                    return;
                 }
-                else
-                {
-                    w.WriteLine($"PM{mPolygonMode};");
-                    w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
-                }
-                mIsFirstPolygonPoint = false;
             }
-            mIsPneDown = false;
+            w.WriteLine($"PU{ConvertPoint(p1)};");
+            mIsPenDown = false;
             mCurrent.Set(p1);
         }
 
@@ -262,7 +268,7 @@ namespace HpglHelper
             if (!PointEQ(mCurrent, p1) || mSelectedPen != s.PenNumber)
             {
                 UpdateLines(w);
-                mIsPneDown = false;
+                mIsPenDown = false;
             }
             CheckPen(w, s);
             if (mLinePoints.Count == 0)
@@ -280,16 +286,17 @@ namespace HpglHelper
             CheckPolygonFirstPoint(w, p1);
             if (!PointEQ(mCurrent, p1))
             {
-                w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
+                w.WriteLine($"PU{ConvertPoint(p1)};");
                 mCurrent.Set(p1);
             }
+            var r = ConvertLength(s.Radius);
             if (s.Tolerance != 5)
             {
-                w.WriteLine($"CI{s.Radius:0.#####},{s.Tolerance:0.#####};");
+                w.WriteLine($"CI{r:0.#####},{s.Tolerance:0.#####};");
             }
             else
             {
-                w.WriteLine($"CI{s.Radius:0.#####};");
+                w.WriteLine($"CI{r:0.#####};");
             }
         }
         void WriteArc(TextWriter w, HpglArcShape s, int iTerminal)
@@ -301,21 +308,21 @@ namespace HpglHelper
             CheckPolygonFirstPoint(w, p1);
             if (!PointEQ(mCurrent, p1))
             {
-                w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
-                mIsPneDown = false;
+                w.WriteLine($"PU{ConvertPoint(p1)};");
+                mIsPenDown = false;
             }
-            if (!mIsPneDown)
+            if (!mIsPenDown)
             {
                 w.Write("PD;");
-                mIsPneDown = true;
+                mIsPenDown = true;
             }
             if (s.Tolerance != 5)
             {
-                w.WriteLine($"PD;AA{p0.X:0.#####},{p0.Y:0.#####},{a:0.#####},{s.Tolerance:0.#####};");
+                w.WriteLine($"PD;AA{ConvertPoint(p0)},{a:0.#####},{s.Tolerance:0.#####};");
             }
             else
             {
-                w.WriteLine($"PD;AA{p0.X:0.#####},{p0.Y:0.#####},{a:0.#####};");
+                w.WriteLine($"PD;AA{ConvertPoint(p0)},{a:0.#####};");
             }
             mCurrent.Set(p2);
         }
@@ -327,15 +334,16 @@ namespace HpglHelper
             if (!PointEQ(mCurrent, p1))
             {
                 mCurrent.Set(p1);
-                w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
+                w.WriteLine($"PU{ConvertPoint(p1)};");
             }
+            var r = ConvertLength(s.Radius);
             if (s.Tolerance != 5)
             {
-                w.WriteLine($"EW{s.Radius:0.#####},{s.StartAngleDeg:0.#####},{s.SweepAngleDeg:0.#####},{s.Tolerance:0.#####};");
+                w.WriteLine($"EW{r:0.#####},{s.StartAngleDeg:0.#####},{s.SweepAngleDeg:0.#####},{s.Tolerance:0.#####};");
             }
             else
             {
-                w.WriteLine($"EW{s.Radius:0.#####},{s.StartAngleDeg:0.#####},{s.SweepAngleDeg:0.#####};");
+                w.WriteLine($"EW{r:0.#####},{s.StartAngleDeg:0.#####},{s.SweepAngleDeg:0.#####};");
             }
         }
 
@@ -360,26 +368,25 @@ namespace HpglHelper
             var p1 = pa[iMin];
             if (!FloatEQ(rMin, 0))
             {
-                w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
-                mIsPneDown = false;
+                w.WriteLine($"PU{ConvertPoint(p1)};");
+                mIsPenDown = false;
                 mCurrent.Set(p1);
             }
-            var p2 = pa[(iMin + 2) % 4];
-            w.WriteLine($"EA{p2.X:0.#####},{p2.Y:0.#####};");
+            {
+                var p2 = pa[(iMin + 2) % 4];
+                w.WriteLine($"EA{ConvertPoint(p2)};");
+            }
         }
         void WritePolygon(TextWriter w, HpglPolygonShape s)
         {
             if (s.PolygonBufferList.Count == 0) return;
-
             //            w.Write($"PM0;");
-
             int polygonMode = 0;
 
             for (var i = 0; i < s.PolygonBufferList.Count; i++)
             {
                 var pb = s.PolygonBufferList[i];
                 if (pb.Count == 0) continue;
-
                 var writer = new HpglWriter();
                 writer.mIsPolygonBuffer = true;
                 writer.mPolygonMode = polygonMode;
@@ -415,7 +422,7 @@ namespace HpglHelper
             var p1 = s.P0;
             if (!PointEQ(mCurrent, p1))
             {
-                w.WriteLine($"PU{p1.X:0.#####},{p1.Y:0.#####};");
+                w.WriteLine($"PU{ConvertPoint(p1)};");
                 mCurrent.Set(p1);
             }
             if (!FloatEQ(mLabelShape.Slant, s.Slant))
@@ -451,14 +458,22 @@ namespace HpglHelper
                 mLabelShape.Origin = s.Origin;
             }
             w.WriteLine($"LB{s.Text}\x03;");
+            {
+                var n = s.Text.Length;
+                var dx = (s.FontWidth + s.LetterSpace) * n;
+                var dy = (s.FontHeight + s.LineSpace) * 0;
+                var a = s.AngleDeg * Math.PI / 180;
+                mCurrent.X += dx * Math.Cos(a) - dy * Math.Sin(a);
+                mCurrent.Y += dx * Math.Sin(a) + dy * Math.Cos(a);
+            }
         }
 
         void UpdateLines(TextWriter w)
         {
             if (mLinePoints.Count == 0) return;
-            if (!mIsPneDown)
+            if (!mIsPenDown)
             {
-                w.Write($"PU{mLinePoints[0].X:0.#####},{mLinePoints[0].Y:0.#####};");
+                w.Write($"PU{ConvertPoint(mLinePoints[0])};");
                 w.Write("PD");
                 if (mLinePoints.Count == 1)
                 {
@@ -468,7 +483,7 @@ namespace HpglHelper
                 {
                     for (var i = 1; i < mLinePoints.Count; i++)
                     {
-                        w.Write($"{mLinePoints[i].X:0.#####},{mLinePoints[i].Y:0.#####}");
+                        w.Write($"{ConvertPoint(mLinePoints[i])}");
                         if (i == mLinePoints.Count - 1)
                         {
                             w.Write(";");
@@ -486,7 +501,7 @@ namespace HpglHelper
                 w.Write("PA");
                 for (var i = 0; i < mLinePoints.Count; i++)
                 {
-                    w.Write($"{mLinePoints[i].X:0.#####},{mLinePoints[i].Y:0.#####}");
+                    w.Write($"{ConvertPoint(mLinePoints[i])}");
                     if (i == mLinePoints.Count - 1)
                     {
                         w.Write(";");
@@ -498,11 +513,12 @@ namespace HpglHelper
                 }
                 w.WriteLine();
             }
-            mIsPneDown = true;
+            mIsPenDown = true;
             mLinePoints.Clear();
         }
 
-        HpglPoint ConvertPoint(HpglPoint p) => p * mmPerUnit;
-        double ConvertLength(double a) => a * mmPerUnit;
+        HpglPoint ConvertPoint(HpglPoint p) => p / mmPerUnit;
+        double ConvertLength(double a) => a / mmPerUnit;
+
     }
 }

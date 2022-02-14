@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace HpglHelper
+﻿namespace HpglHelper
 {
     public class HpglPoint
     {
@@ -37,12 +31,16 @@ namespace HpglHelper
 
         public double Hypot() => Math.Sqrt(X * X + Y * Y);
 
-        public override string ToString() => $"{X} {Y}";
+        public override string ToString() => $"{X:0.#####},{Y:0.#####}";
 
 
         public static HpglPoint operator *(HpglPoint p, double a)
         {
             return new HpglPoint(p.X * a, p.Y * a);
+        }
+        public static HpglPoint operator /(HpglPoint p, double a)
+        {
+            return new HpglPoint(p.X / a, p.Y / a);
         }
         public static HpglPoint operator -(HpglPoint p1, HpglPoint p2)
         {

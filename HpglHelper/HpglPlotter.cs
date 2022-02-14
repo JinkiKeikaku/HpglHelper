@@ -70,7 +70,14 @@ namespace HpglHelper
             mPaperWidth = paperWidth;
             mPaperHeight = paperHeight;
             mMillimeterPerUnit = millimeterPerUnit;
+            mCurrent = new HpglPoint(0, 0);
             Reset();
+            mCurrent = new HpglPoint(0, 0);
+            isRelative = false;
+            InitFontSize();
+            ChordToleranceMode = 0;
+            mFillPenThicknessMap.Clear();
+            FillType = new();
         }
 
         public void InitFontSize()
@@ -83,19 +90,13 @@ namespace HpglHelper
         {
             LabelLetterSapce = 0;
             LabelLineSapce = 0;
-    }
+        }
 
-    public void Reset()
+        public void Reset()
         {
             SetIP();
             SetSC();
-            mCurrent = new HpglPoint(0, 0);
             isPenDown = false;
-            isRelative = false;
-            InitFontSize();
-            ChordToleranceMode = 0;
-            mFillPenThicknessMap.Clear();
-            FillType = new();
         }
 
         public void SetIP()
@@ -156,7 +157,7 @@ namespace HpglHelper
             {
                 var line = new HpglLineShape();
                 line.P0.Set(mCurrent);
-                mCurrent= ConvertRelativePoint(x, y);
+                mCurrent = ConvertRelativePoint(x, y);
                 line.P1.Set(mCurrent);
                 AddCommand(line);
             }
@@ -197,7 +198,7 @@ namespace HpglHelper
 
         public void Arc(double cx, double cy, double sweepDeg, bool isRelative, double tolerance)
         {
-            var p0 = isRelative? ConvertRelativePoint(cx, cy):ConvertPoint(cx, cy);
+            var p0 = isRelative ? ConvertRelativePoint(cx, cy) : ConvertPoint(cx, cy);
             var s = new HpglArcShape();
             var dp = mCurrent - p0;
             dp.Y /= GetFlatness();
@@ -206,7 +207,7 @@ namespace HpglHelper
             s.Flatness = GetFlatness();
             s.StartAngleDeg = 180 * Math.Atan2(dp.Y, dp.X) / Math.PI;
             s.SweepAngleDeg = sweepDeg;
-//            s.StartPoint.Set(mCurrent);
+            //            s.StartPoint.Set(mCurrent);
             if (isPenDown)
             {
                 AddCommand(s);
@@ -244,7 +245,7 @@ namespace HpglHelper
             var s = new HpglFillRectangleShape();
             s.P0.Set(mCurrent);
             s.P1.Set(p1);
-//            s.FillType = FillType;
+            //            s.FillType = FillType;
             s.PenThickness = GetPenThickness();
             AddCommand(s);
         }
@@ -292,7 +293,9 @@ namespace HpglHelper
 
         HpglPolygonShape? mOpenedPolygonShape = null;
         HpglPolygonShape? mClosedPolygonShape = null;
-        List<HpglShape>? mPolygonBuffer=null;
+        List<HpglShape>? mPolygonBuffer = null;
+        HpglPoint mPolygonStartPoint = new();
+
         public void ExecPolygonMode(int mode)
         {
             //ポリゴン中でもIN命令は有効なので注意
@@ -302,12 +305,15 @@ namespace HpglHelper
                     mOpenedPolygonShape = new HpglPolygonShape();
                     mClosedPolygonShape = null;
                     mPolygonBuffer = new();
+                    mPolygonStartPoint.Set(mCurrent);
                     break;
                 case 1: //close polygon
-                    if (mPolygonBuffer != null && mOpenedPolygonShape!= null) {
+                    if (mPolygonBuffer != null && mOpenedPolygonShape != null)
+                    {
                         mOpenedPolygonShape!.Add(mPolygonBuffer!);
                         mPolygonBuffer = new();
                     }
+                    mCurrent.Set(mPolygonStartPoint);
                     break;
                 case 2: //close polygon and exit polygon mode
                     if (mPolygonBuffer != null && mOpenedPolygonShape != null)
@@ -317,6 +323,7 @@ namespace HpglHelper
                         mClosedPolygonShape = mOpenedPolygonShape;
                         mOpenedPolygonShape = null;
                         AddCommand(mClosedPolygonShape!);
+                        mCurrent.Set(mPolygonStartPoint);
                     }
                     break;
             }
@@ -339,7 +346,7 @@ namespace HpglHelper
 
         void AddCommand(HpglCommand cmd)
         {
-            if(mPolygonBuffer != null && cmd is HpglShape ss)
+            if (mPolygonBuffer != null && cmd is HpglShape ss)
             {
                 if (ss is HpglCircleShape || ss is HpglArcShape || ss is HpglLineShape)
                 {
@@ -349,19 +356,20 @@ namespace HpglHelper
             }
 
 
-            if (cmd is HpglShape s) { 
-                s.PenNumber = SelectedPen; 
+            if (cmd is HpglShape s)
+            {
+                s.PenNumber = SelectedPen;
             }
-            if(cmd is HpglFillShape fs)
+            if (cmd is HpglFillShape fs)
             {
                 fs.FillType.FillType = FillType.FillType;
-                fs.FillType.FillAngle=FillType.FillAngle;
+                fs.FillType.FillAngle = FillType.FillAngle;
                 switch (FillType.FillGap)
                 {
                     case -1:
                         var dx = P2X - P1X;
                         var dy = P2Y - P1Y;
-                        fs.FillType.FillGap  = Math.Sqrt(dx * dx + dy * dy) / 100 * mMillimeterPerUnit;
+                        fs.FillType.FillGap = Math.Sqrt(dx * dx + dy * dy) / 100 * mMillimeterPerUnit;
                         break;
                     case 0:
                         fs.FillType.FillGap = GetPenThickness();
@@ -377,7 +385,7 @@ namespace HpglHelper
         /// <summary>
         /// 座標変換。SC,IPの値からプロッタ座標(mm)に変換。
         /// </summary>
-        HpglPoint ConvertPoint(HpglPoint p)=>ConvertPoint(p.X, p.Y);
+        HpglPoint ConvertPoint(HpglPoint p) => ConvertPoint(p.X, p.Y);
 
         /// <summary>
         /// 座標変換。SC,IPの値からプロッタ座標(mm)に変換。
@@ -398,7 +406,7 @@ namespace HpglHelper
         {
             var sx = (double)(P2X - P1X) / (XMax - XMin);
             var sy = (double)(P2Y - P1Y) / (YMax - YMin);
-            return new HpglPoint(sx * x * mMillimeterPerUnit +　mCurrent.X, sy * y * mMillimeterPerUnit + mCurrent.Y);
+            return new HpglPoint(sx * x * mMillimeterPerUnit + mCurrent.X, sy * y * mMillimeterPerUnit + mCurrent.Y);
         }
 
         double ConvertLength(double a)
@@ -412,7 +420,7 @@ namespace HpglHelper
             //var sy = (double)(P2Y - P1Y) / (YMax - YMin);
             //return sy / sx;
             var sx = (double)(P2X - P1X) / (XMax - XMin);
-            return (double)(P2Y - P1Y) * (XMax - XMin) / ((YMax - YMin)* (P2X - P1X));
+            return (double)(P2Y - P1Y) * (XMax - XMin) / ((YMax - YMin) * (P2X - P1X));
         }
 
     }

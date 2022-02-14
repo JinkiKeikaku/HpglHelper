@@ -54,7 +54,7 @@ namespace HpglViewer
             foreach (var s in mShapes)
             {
                 if (s is HpglShape ss)
-                    writer.Shapes.Add(ss);
+                    writer.AddShape(ss);
             }
             //writer.Shapes.Add(new HpglCircleShape()
             //{
