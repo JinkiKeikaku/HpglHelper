@@ -273,8 +273,8 @@ namespace HpglHelper
             text.FontWidth = FontWidth;
             text.AngleDeg = TextAngle;
             text.Origin = LabelOrigin;
-            text.LetterSpace = FontWidth * 1.5 * (1 + LabelLetterSapce);
-            text.LineSpace = FontHeight * 2.0 * (1 + LabelLineSapce);
+            text.LetterSpace = FontWidth * 1.5 * (1 + LabelLetterSapce)- FontWidth;
+            text.LineSpace = FontHeight * 2.0 * (1 + LabelLineSapce) - FontHeight;
 
             AddCommand(text);
         }

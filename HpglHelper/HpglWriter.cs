@@ -453,8 +453,8 @@ namespace HpglHelper
             }
             if (!FloatEQ(mLabelShape.LetterSpace, s.LetterSpace) || !FloatEQ(mLabelShape.LineSpace, s.LineSpace))
             {
-                var letterSpacing = s.LetterSpace / (1.5 * s.FontWidth) - 1.0;
-                var lineSpacing = s.LineSpace / (2 * s.FontHeight) - 1.0;
+                var letterSpacing = (s.FontWidth+s.LetterSpace) / (1.5 * s.FontWidth) - 1.0;
+                var lineSpacing = (s.FontHeight+s.LineSpace) / (2 * s.FontHeight) - 1.0;
                 w.Write($"ES{letterSpacing:0.#####},{lineSpacing:0.#####};");
                 mLabelShape.LetterSpace = s.LetterSpace;
                 mLabelShape.LineSpace = s.LineSpace;
